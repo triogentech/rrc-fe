@@ -2,7 +2,6 @@ import GridShape from "@/components/common/GridShape";
 import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
 
 import { ThemeProvider } from "@/context/ThemeContext";
-import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
@@ -21,16 +20,16 @@ export default function AuthLayout({
               {/* <!-- ===== Common Grid Shape Start ===== --> */}
               <GridShape />
               <div className="flex flex-col items-center max-w-xs">
-                <Link href="/" className="block mb-4">
-                  <Image
-                    width={231}
-                    height={48}
-                    src="./images/logo/auth-logo.svg"
-                    alt="Logo"
-                  />
+                <Link href="/" className="block mb-6 group">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
+                      RCC Trips
+                    </h1>
+                    <div className="w-16 h-1 bg-brand-500 mx-auto rounded-full group-hover:w-20 transition-all duration-300"></div>
+                  </div>
                 </Link>
-                <p className="text-center text-gray-400 dark:text-white/60">
-                  Free and Open-Source Tailwind CSS Admin Dashboard Template
+                <p className="text-center text-gray-300 dark:text-white/80 text-lg font-medium leading-relaxed">
+                  Smarter Trips, Stronger Profits.
                 </p>
               </div>
             </div>

@@ -3,23 +3,46 @@ import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
-import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
+import { EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    // Use AuthContext login function
+    if (login(email, password)) {
+      // Login successful, redirect to dashboard
+      window.location.href = '/';
+    } else {
+      setError("Invalid email or password");
+    }
+    
+    setIsLoading(false);
+  };
+
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full">
       <div className="w-full max-w-md sm:pt-10 mx-auto mb-5">
-        <Link
+        {/* <Link
           href="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
           <ChevronLeftIcon />
           Back to dashboard
-        </Link>
+        </Link> */}
       </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
@@ -32,7 +55,7 @@ export default function SignInForm() {
             </p>
           </div>
           <div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
+            {/* <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
               <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
                 <svg
                   width="20"
@@ -73,8 +96,8 @@ export default function SignInForm() {
                 </svg>
                 Sign in with X
               </button>
-            </div>
-            <div className="relative py-3 sm:py-5">
+            </div> */}
+            {/* <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
               </div>
@@ -83,14 +106,24 @@ export default function SignInForm() {
                   Or
                 </span>
               </div>
-            </div>
-            <form>
+            </div> */}
+            <form onSubmit={handleSubmit}>
               <div className="space-y-6">
+                {error && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
                 <div>
                   <Label>
                     Email <span className="text-error-500">*</span>{" "}
                   </Label>
-                  <Input placeholder="info@gmail.com" type="email" />
+                  <Input 
+                    placeholder="info@gmail.com" 
+                    type="email" 
+                    defaultValue={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div>
                   <Label>
@@ -100,6 +133,8 @@ export default function SignInForm() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
+                      defaultValue={password}
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -128,8 +163,13 @@ export default function SignInForm() {
                   </Link>
                 </div>
                 <div>
-                  <Button className="w-full" size="sm">
-                    Sign in
+                  <Button 
+                    className="w-full" 
+                    size="sm" 
+                    onClick={() => handleSubmit}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Signing in..." : "Sign in"}
                   </Button>
                 </div>
               </div>

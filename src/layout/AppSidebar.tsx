@@ -1,23 +1,16 @@
 "use client";
 import React, { useEffect, useRef, useState,useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import { useAuth } from "../context/AuthContext";
 import {
-  BoxCubeIcon,
-  CalenderIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
-  ListIcon,
-  PageIcon,
-  PieChartIcon,
-  PlugInIcon,
-  TableIcon,
+  PaperPlaneIcon,
   UserCircleIcon,
 } from "../icons/index";
-import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
   name: string;
@@ -30,12 +23,12 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    path: "/",
   },
   {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
+    icon: <PaperPlaneIcon />,
+    name: "Trips",
+    path: "/trips",
   },
   {
     icon: <UserCircleIcon />,
@@ -43,59 +36,60 @@ const navItems: NavItem[] = [
     path: "/profile",
   },
 
-  {
-    name: "Forms",
-    icon: <ListIcon />,
-    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  },
-  {
-    name: "Tables",
-    icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  },
-  {
-    name: "Pages",
-    icon: <PageIcon />,
-    subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
-    ],
-  },
+  // {
+  //   name: "Forms",
+  //   icon: <ListIcon />,
+  //   subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
+  // },
+  // {
+  //   name: "Tables",
+  //   icon: <TableIcon />,
+  //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+  // },
+  // {
+  //   name: "Pages",
+  //   icon: <PageIcon />,
+  //   subItems: [
+  //     { name: "Blank Page", path: "/blank", pro: false },
+  //     { name: "404 Error", path: "/error-404", pro: false },
+  //   ],
+  // },
 ];
 
-const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon />,
-    name: "Charts",
-    subItems: [
-      { name: "Line Chart", path: "/line-chart", pro: false },
-      { name: "Bar Chart", path: "/bar-chart", pro: false },
-    ],
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "UI Elements",
-    subItems: [
-      { name: "Alerts", path: "/alerts", pro: false },
-      { name: "Avatar", path: "/avatars", pro: false },
-      { name: "Badge", path: "/badge", pro: false },
-      { name: "Buttons", path: "/buttons", pro: false },
-      { name: "Images", path: "/images", pro: false },
-      { name: "Videos", path: "/videos", pro: false },
-    ],
-  },
-  {
-    icon: <PlugInIcon />,
-    name: "Authentication",
-    subItems: [
-      { name: "Sign In", path: "/signin", pro: false },
-      { name: "Sign Up", path: "/signup", pro: false },
-    ],
-  },
-];
+// const othersItems: NavItem[] = [
+//   {
+//     icon: <PieChartIcon />,
+//     name: "Charts",
+//     subItems: [
+//       { name: "Line Chart", path: "/line-chart", pro: false },
+//       { name: "Bar Chart", path: "/bar-chart", pro: false },
+//     ],
+//   },
+//   {
+//     icon: <BoxCubeIcon />,
+//     name: "UI Elements",
+//     subItems: [
+//       { name: "Alerts", path: "/alerts", pro: false },
+//       { name: "Avatar", path: "/avatars", pro: false },
+//       { name: "Badge", path: "/badge", pro: false },
+//       { name: "Buttons", path: "/buttons", pro: false },
+//       { name: "Images", path: "/images", pro: false },
+//       { name: "Videos", path: "/videos", pro: false },
+//     ],
+//   },
+//   {
+//     icon: <PlugInIcon />,
+//     name: "Authentication",
+//     subItems: [
+//       { name: "Sign In", path: "/signin", pro: false },
+//       { name: "Sign Up", path: "/signup", pro: false },
+//     ],
+//   },
+// ];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { logout } = useAuth();
   const pathname = usePathname();
 
   const renderMenuItems = (
@@ -239,8 +233,8 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     // Check if the current path matches any submenu item
     let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+    ["main"].forEach((menuType) => {
+      const items = menuType === "main" ? navItems : []; // othersItems commented out
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -311,32 +305,21 @@ const AppSidebar: React.FC = () => {
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
+              <div className="text-center">
+                <span className="text-2xl font-bold text-gray-800 dark:text-white">RCC Trips</span>
+                <div className="w-16 h-1 bg-brand-500 mx-auto rounded-full mt-2"></div>
+              </div>
             </>
           ) : (
-            <Image
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+            <div className="text-center">
+              <span className="text-2xl font-bold text-gray-800 dark:text-white">RCC Trips</span>
+              <div className="w-16 h-1 bg-brand-500 mx-auto rounded-full mt-2"></div>
+            </div>
           )}
         </Link>
       </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+      
+      <div className="flex flex-col flex-1 overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
@@ -356,7 +339,7 @@ const AppSidebar: React.FC = () => {
               {renderMenuItems(navItems, "main")}
             </div>
 
-            <div className="">
+            {/* <div className="">
               <h2
                 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
                   !isExpanded && !isHovered
@@ -371,10 +354,24 @@ const AppSidebar: React.FC = () => {
                 )}
               </h2>
               {renderMenuItems(othersItems, "others")}
-            </div>
+            </div> */}
           </div>
         </nav>
-        {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
+      </div>
+      
+      {/* Logout Button - Always at bottom */}
+      <div className="pb-6">
+        <button
+          onClick={logout}
+          className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors ${
+            !isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          {(isExpanded || isHovered || isMobileOpen) && "Logout"}
+        </button>
       </div>
     </aside>
   );
