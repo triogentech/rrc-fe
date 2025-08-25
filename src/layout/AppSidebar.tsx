@@ -10,6 +10,10 @@ import {
   HorizontaLDots,
   PaperPlaneIcon,
   UserCircleIcon,
+  GroupIcon,
+  BoxIcon,
+  DollarLineIcon,
+  UserIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -29,6 +33,26 @@ const navItems: NavItem[] = [
     icon: <PaperPlaneIcon />,
     name: "Trips",
     path: "/trips",
+  },
+  {
+    icon: <GroupIcon />,
+    name: "Drivers",
+    path: "/drivers",
+  },
+  {
+    icon: <BoxIcon />,
+    name: "Vehicles",
+    path: "/vehicles",
+  },
+  {
+    icon: <DollarLineIcon />,
+    name: "Expense",
+    path: "/expense",
+  },
+  {
+    icon: <UserIcon />,
+    name: "Staff",
+    path: "/staff",
   },
   {
     icon: <UserCircleIcon />,
