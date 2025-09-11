@@ -6,31 +6,39 @@ import Button from "@/components/ui/button/Button";
 import { EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isLoading } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
 
-    // Use AuthContext login function
-    if (login(email, password)) {
-      // Login successful, redirect to dashboard
-      window.location.href = '/';
-    } else {
-      setError("Invalid email or password");
+    if (!identifier.trim() || !password.trim()) {
+      setError("Please enter both identifier and password");
+      return;
     }
-    
-    setIsLoading(false);
+
+    try {
+      const success = await login(identifier, password);
+      if (success) {
+        // Login successful, redirect to dashboard
+        console.log('Login successful, redirecting to dashboard');
+        router.push('/');
+      } else {
+        setError("Invalid identifier or password");
+      }
+    } catch {
+      setError("An error occurred during login. Please try again.");
+    }
   };
 
   return (
@@ -51,7 +59,7 @@ export default function SignInForm() {
               Sign In
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your email and password to sign in!
+              Enter your identifier and password to sign in!
             </p>
           </div>
           <div>
@@ -116,13 +124,13 @@ export default function SignInForm() {
                 )}
                 <div>
                   <Label>
-                    Email <span className="text-error-500">*</span>{" "}
+                    Identifier <span className="text-error-500">*</span>{" "}
                   </Label>
                   <Input 
-                    placeholder="info@gmail.com" 
-                    type="email" 
-                    defaultValue={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your identifier (email or username)" 
+                    type="text" 
+                    defaultValue={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                   />
                 </div>
                 <div>

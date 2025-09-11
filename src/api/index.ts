@@ -1,0 +1,45 @@
+/**
+ * API module exports
+ * Centralized exports for all API-related functionality
+ */
+
+// Base API
+export { BaseApi, api, get, post, put, patch, del } from './baseApi';
+export { API_CONFIG } from './baseApi';
+
+// Types
+export * from './types';
+
+// Utilities
+export {
+  ApiErrorHandler,
+  DataTransformer,
+  RequestUtils,
+  StorageUtils,
+  ValidationUtils,
+  FormatUtils,
+} from './utils';
+
+// Re-export commonly used types for convenience
+export type {
+  ApiResponse,
+  ApiError,
+  PaginationParams,
+  PaginatedResponse,
+  User,
+  UserRole,
+  Vehicle,
+  VehicleStatus,
+  Trip,
+  TripStatus,
+  Expense,
+  ExpenseCategory,
+  ExpenseStatus,
+  Staff,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  DashboardStats,
+  Notification,
+  NotificationType,
+} from './types';

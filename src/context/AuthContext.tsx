@@ -1,13 +1,15 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import type { User } from '@/api/types';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  userEmail: string | null;
-  login: (email: string, password: string) => boolean;
+  user: User | null;
+  login: (identifier: string, password: string) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,54 +27,46 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const router = useRouter();
+  // Use Redux auth hook for state management
+  const reduxAuth = useReduxAuth();
+  
+  // Legacy state for backward compatibility (these will mirror Redux state)
+  const [isLoading, setIsLoading] = useState(false);
 
-  const checkAuth = (): boolean => {
-    if (typeof window !== 'undefined') {
-      const auth = localStorage.getItem('isAuthenticated');
-      const email = localStorage.getItem('userEmail');
-      
-      if (auth === 'true' && email) {
-        setIsAuthenticated(true);
-        setUserEmail(email);
-        return true;
-      }
+  const checkAuth = useCallback((): boolean => {
+    // Delegate to Redux auth hook
+    return reduxAuth.checkAuth();
+  }, [reduxAuth]);
+
+  const login = async (identifier: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      console.log('AuthContext: Delegating login to Redux');
+      const success = await reduxAuth.login(identifier, password);
+      return success;
+    } finally {
+      setIsLoading(false);
     }
-    return false;
   };
 
-  const login = (email: string, password: string): boolean => {
-    // Static authentication check
-    if (email === "eeshee@gmail.com" && password === "Chiro@2002") {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userEmail', email);
-      setIsAuthenticated(true);
-      setUserEmail(email);
-      return true;
-    }
-    return false;
+  const logout = async () => {
+    console.log('AuthContext: Delegating logout to Redux');
+    await reduxAuth.logout();
   };
 
-  const logout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userEmail');
-    setIsAuthenticated(false);
-    setUserEmail(null);
-    router.push('/signin');
-  };
-
+  // Sync loading state with Redux
   useEffect(() => {
-    checkAuth();
-  }, []);
+    setIsLoading(reduxAuth.isLoading);
+  }, [reduxAuth.isLoading]);
 
   const value: AuthContextType = {
-    isAuthenticated,
-    userEmail,
+    // Use Redux state instead of local state
+    isAuthenticated: reduxAuth.isAuthenticated,
+    user: reduxAuth.user,
     login,
     logout,
     checkAuth,
+    isLoading: isLoading || reduxAuth.isLoading,
   };
 
   return (
