@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { authService } from '@/api/services';
+import { authService } from '@/store/api/services';
 
 export default function ApiTest() {
   const [result, setResult] = useState<string>('');

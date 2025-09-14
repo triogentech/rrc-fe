@@ -18,7 +18,7 @@ import {
   getCurrentUserThunk,
   validateSessionThunk,
 } from '../thunks/authThunks';
-import type { User } from '@/api/types';
+import type { User } from '../api/types';
 
 // Custom hook for Redux-based authentication
 export const useReduxAuth = () => {

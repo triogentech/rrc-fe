@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import type { User } from '@/api/types';
+import type { User } from '@/store/api/types';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 
 interface AuthContextType {

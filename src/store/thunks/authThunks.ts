@@ -1,7 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { authService } from '@/api/services';
-import { ApiErrorHandler } from '@/api/utils';
-import type { User } from '@/api/types';
+import { authService } from '../api/services';
+import { ApiErrorHandler } from '../api/utils';
+import type { User } from '../api/types';
 import { loginStart, loginSuccess, loginFailure, logout as logoutAction } from '../slices/authSlice';
 
 // Login thunk
