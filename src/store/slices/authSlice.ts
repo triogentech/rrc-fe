@@ -154,6 +154,23 @@ const authSlice = createSlice({
         }
       }
     },
+
+    // Clear all auth data (for cleanup)
+    clearAuthData: (state) => {
+      state.isAuthenticated = false;
+      state.user = null;
+      state.token = null;
+      state.error = null;
+      state.isLoading = false;
+      state.lastLoginTime = null;
+
+      // Clear localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('lastLoginTime');
+      }
+    },
   },
 });
 
@@ -169,6 +186,7 @@ export const {
   initializeAuth,
   refreshTokenSuccess,
   validateSession,
+  clearAuthData,
 } = authSlice.actions;
 
 // Selectors

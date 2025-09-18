@@ -1,6 +1,7 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { useModal } from "../../hooks/useModal";
+import { useUser } from "../../store/hooks/useUser";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
@@ -8,6 +9,23 @@ import Label from "../form/Label";
 
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
+  const {
+    currentUser,
+    isLoading,
+    getCurrentUser,
+    getUserDisplayName,
+    getUserEmail,
+    getUserRole,
+    clearUserError,
+  } = useUser();
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    if (!currentUser) {
+      getCurrentUser();
+    }
+  }, [currentUser, getCurrentUser]);
+
   const handleSave = () => {
     // Handle save logic here
     console.log("Saving changes...");
@@ -24,46 +42,46 @@ export default function UserInfoCard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                First Name
+                Username
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Musharof
+                {isLoading ? 'Loading...' : currentUser?.username || 'N/A'}
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Last Name
+                Email Address
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Chowdhury
+                {isLoading ? 'Loading...' : getUserEmail()}
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Email address
+                Role
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                randomuser@pimjo.com
+                {isLoading ? 'Loading...' : getUserRole()}
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Phone
+                Status
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                +09 363 398 46
+                {isLoading ? 'Loading...' : (currentUser?.confirmed ? 'Confirmed' : 'Pending')}
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Bio
+                User ID
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Team Manager
+                {isLoading ? 'Loading...' : currentUser?.documentId || 'N/A'}
               </p>
             </div>
           </div>
@@ -147,28 +165,28 @@ export default function UserInfoCard() {
 
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>First Name</Label>
-                    <Input type="text" defaultValue="Musharof" />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Last Name</Label>
-                    <Input type="text" defaultValue="Chowdhury" />
+                    <Label>Username</Label>
+                    <Input type="text" defaultValue={currentUser?.username || ''} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email Address</Label>
-                    <Input type="text" defaultValue="randomuser@pimjo.com" />
+                    <Input type="text" defaultValue={currentUser?.email || ''} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>Phone</Label>
-                    <Input type="text" defaultValue="+09 363 398 46" />
+                    <Label>Role</Label>
+                    <Input type="text" defaultValue={currentUser?.role?.name || ''} disabled />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Status</Label>
+                    <Input type="text" defaultValue={currentUser?.confirmed ? 'Confirmed' : 'Pending'} disabled />
                   </div>
 
                   <div className="col-span-2">
-                    <Label>Bio</Label>
-                    <Input type="text" defaultValue="Team Manager" />
+                    <Label>User ID</Label>
+                    <Input type="text" defaultValue={currentUser?.documentId || ''} disabled />
                   </div>
                 </div>
               </div>

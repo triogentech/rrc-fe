@@ -8,15 +8,25 @@ import type {
   User,
   RegisterRequest,
   Vehicle,
+  VehicleCreateRequest,
+  VehicleUpdateRequest,
   Trip,
+  TripCreateRequest,
+  TripUpdateRequest,
   Expense,
   Staff,
+  StaffCreateRequest,
+  StaffUpdateRequest,
+  Driver,
+  DriverCreateRequest,
+  DriverUpdateRequest,
   DashboardStats,
   PaginatedResponse,
   PaginationParams,
   DateRange,
   UploadResponse,
   Notification,
+  StrapiResponse,
 } from './types';
 
 /**
@@ -56,7 +66,7 @@ export const authService = {
     } catch (error) {
       console.error('Direct fetch failed, trying API client:', error);
       // Fallback to API client
-      return api.post<{ jwt: string; user: User }>('/auth/local', credentials);
+      return api.post<{ jwt: string; user: User }>('/api/auth/local', credentials);
     }
   },
 
@@ -64,97 +74,51 @@ export const authService = {
    * Register new user
    */
   register: (userData: RegisterRequest) =>
-    api.post<User>('/auth/register', userData),
+    api.post<User>('/api/auth/register', userData),
 
   /**
    * Refresh authentication token
    */
   refreshToken: (refreshToken: string) =>
-    api.post<{ jwt: string; user: User }>('/auth/refresh', { refreshToken }),
+    api.post<{ jwt: string; user: User }>('/api/auth/refresh', { refreshToken }),
 
   /**
    * Logout user
    */
   logout: () =>
-    api.post('/auth/logout'),
+    api.post('/api/auth/logout'),
 
   /**
    * Get current user profile
    */
   getProfile: () =>
-    api.get<User>('/users/me'),
+    api.get<User>('/api/users/me'),
 
   /**
    * Update user profile
    */
   updateProfile: (userData: Partial<User>) =>
-    api.put<User>('/users/me', userData),
+    api.put<User>('/api/users/me', userData),
 
   /**
    * Change password
    */
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.post('/auth/change-password', { currentPassword, newPassword }),
+    api.post('/api/auth/change-password', { currentPassword, newPassword }),
 
   /**
    * Request password reset
    */
   requestPasswordReset: (email: string) =>
-    api.post('/auth/forgot-password', { email }),
+    api.post('/api/auth/forgot-password', { email }),
 
   /**
    * Reset password with token
    */
   resetPassword: (token: string, newPassword: string) =>
-    api.post('/auth/reset-password', { token, newPassword }),
+    api.post('/api/auth/reset-password', { token, newPassword }),
 };
 
-/**
- * User Management Service
- */
-export const userService = {
-  /**
-   * Get all users with pagination
-   */
-  getUsers: (params?: PaginationParams & { role?: string; isActive?: boolean }) =>
-    api.get<PaginatedResponse<User>>('/users', params),
-
-  /**
-   * Get user by ID
-   */
-  getUser: (id: string) =>
-    api.get<User>(`/users/${id}`),
-
-  /**
-   * Create new user
-   */
-  createUser: (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<User>('/users', userData),
-
-  /**
-   * Update user
-   */
-  updateUser: (id: string, userData: Partial<User>) =>
-    api.put<User>(`/users/${id}`, userData),
-
-  /**
-   * Delete user
-   */
-  deleteUser: (id: string) =>
-    api.delete(`/users/${id}`),
-
-  /**
-   * Toggle user active status
-   */
-  toggleUserStatus: (id: string) =>
-    api.patch(`/users/${id}/toggle-status`),
-
-  /**
-   * Search users
-   */
-  searchUsers: (query: string, params?: PaginationParams) =>
-    api.get<PaginatedResponse<User>>('/users/search', { q: query, ...params }),
-};
 
 /**
  * Vehicle Management Service
@@ -163,128 +127,86 @@ export const vehicleService = {
   /**
    * Get all vehicles with pagination
    */
-  getVehicles: (params?: PaginationParams & { status?: string; driverId?: string }) =>
-    api.get<PaginatedResponse<Vehicle>>('/vehicles', params),
+  getVehicles: (params?: PaginationParams & { currentStatus?: string; active?: boolean; search?: string }) => {
+    console.log('Vehicle service: Getting vehicles with params:', params);
+    return api.get<StrapiResponse<Vehicle>>('/api/vehicles', params);
+  },
 
   /**
    * Get vehicle by ID
    */
   getVehicle: (id: string) =>
-    api.get<Vehicle>(`/vehicles/${id}`),
+    api.get<Vehicle>(`/api/vehicles/${id}`),
 
   /**
    * Create new vehicle
    */
-  createVehicle: (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<Vehicle>('/vehicles', vehicleData),
+  createVehicle: (vehicleData: VehicleCreateRequest) => {
+    console.log('Vehicle service: Creating vehicle with data:', vehicleData);
+    
+    // Strapi API expects data wrapped in a 'data' object
+    const strapiData = {
+      data: vehicleData
+    };
+    
+    console.log('Vehicle service: Sending to API:', strapiData);
+    return api.post<Vehicle>('/api/vehicles', strapiData);
+  },
 
   /**
    * Update vehicle
    */
-  updateVehicle: (id: string, vehicleData: Partial<Vehicle>) =>
-    api.put<Vehicle>(`/vehicles/${id}`, vehicleData),
+  updateVehicle: (id: string, vehicleData: VehicleUpdateRequest) => {
+    console.log('Vehicle service: Updating vehicle with ID:', id);
+    console.log('Vehicle service: Vehicle data received:', vehicleData);
+    
+    // Filter out undefined values to avoid sending them to the API
+    const cleanedData = Object.fromEntries(
+      Object.entries(vehicleData).filter(([, value]) => value !== undefined)
+    );
+    
+    console.log('Vehicle service: Cleaned data:', cleanedData);
+    
+    // Strapi API expects data wrapped in a 'data' object
+    const strapiData = {
+      data: cleanedData
+    };
+    
+    console.log('Vehicle service: Final Strapi data:', strapiData);
+    return api.put<Vehicle>(`/api/vehicles/${id}`, strapiData);
+  },
 
   /**
    * Delete vehicle
    */
   deleteVehicle: (id: string) =>
-    api.delete(`/vehicles/${id}`),
+    api.delete(`/api/vehicles/${id}`),
 
   /**
-   * Assign driver to vehicle
+   * Toggle vehicle active status
    */
-  assignDriver: (vehicleId: string, driverId: string) =>
-    api.post(`/vehicles/${vehicleId}/assign-driver`, { driverId }),
+  toggleVehicleStatus: (id: string) =>
+    api.patch(`/api/vehicles/${id}/toggle-status`),
 
   /**
-   * Unassign driver from vehicle
+   * Search vehicles
    */
-  unassignDriver: (vehicleId: string) =>
-    api.post(`/vehicles/${vehicleId}/unassign-driver`),
+  searchVehicles: (query: string, params?: PaginationParams) =>
+    api.get<StrapiResponse<Vehicle>>('/api/vehicles', { search: query, ...params }),
 
   /**
-   * Get vehicle maintenance history
+   * Get vehicles by status
    */
-  getMaintenanceHistory: (vehicleId: string, params?: PaginationParams) =>
-    api.get<PaginatedResponse<Record<string, unknown>>>(`/vehicles/${vehicleId}/maintenance`, params),
+  getVehiclesByStatus: (active: boolean, params?: PaginationParams) =>
+    api.get<StrapiResponse<Vehicle>>('/api/vehicles', { active, ...params }),
 
   /**
-   * Schedule maintenance
+   * Get vehicles by current status
    */
-  scheduleMaintenance: (vehicleId: string, maintenanceData: Record<string, unknown>) =>
-    api.post(`/vehicles/${vehicleId}/maintenance`, maintenanceData),
+  getVehiclesByCurrentStatus: (currentStatus: string, params?: PaginationParams) =>
+    api.get<StrapiResponse<Vehicle>>('/api/vehicles', { currentStatus, ...params }),
 };
 
-/**
- * Trip Management Service
- */
-export const tripService = {
-  /**
-   * Get all trips with pagination
-   */
-  getTrips: (params?: PaginationParams & { status?: string; driverId?: string; vehicleId?: string }) =>
-    api.get<PaginatedResponse<Trip>>('/trips', params),
-
-  /**
-   * Get trip by ID
-   */
-  getTrip: (id: string) =>
-    api.get<Trip>(`/trips/${id}`),
-
-  /**
-   * Create new trip
-   */
-  createTrip: (tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<Trip>('/trips', tripData),
-
-  /**
-   * Update trip
-   */
-  updateTrip: (id: string, tripData: Partial<Trip>) =>
-    api.put<Trip>(`/trips/${id}`, tripData),
-
-  /**
-   * Delete trip
-   */
-  deleteTrip: (id: string) =>
-    api.delete(`/trips/${id}`),
-
-  /**
-   * Start trip
-   */
-  startTrip: (id: string) =>
-    api.post(`/trips/${id}/start`),
-
-  /**
-   * Complete trip
-   */
-  completeTrip: (id: string, endData: { endTime: string; endLocation: string; distance: number }) =>
-    api.post(`/trips/${id}/complete`, endData),
-
-  /**
-   * Cancel trip
-   */
-  cancelTrip: (id: string, reason: string) =>
-    api.post(`/trips/${id}/cancel`, { reason }),
-
-  /**
-   * Get trips by date range
-   */
-  getTripsByDateRange: (dateRange: DateRange, params?: PaginationParams) =>
-    api.get<PaginatedResponse<Trip>>('/trips/by-date-range', { ...dateRange, ...params }),
-
-  /**
-   * Get upcoming trips
-   */
-  getUpcomingTrips: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<Trip>>('/trips/upcoming', params),
-
-  /**
-   * Get past trips
-   */
-  getPastTrips: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<Trip>>('/trips/past', params),
-};
 
 /**
  * Expense Management Service
@@ -294,7 +216,7 @@ export const expenseService = {
    * Get all expenses with pagination
    */
   getExpenses: (params?: PaginationParams & { status?: string; category?: string; driverId?: string }) =>
-    api.get<PaginatedResponse<Expense>>('/expenses', params),
+    api.get<PaginatedResponse<Expense>>('/api/expenses', params),
 
   /**
    * Get expense by ID
@@ -306,7 +228,7 @@ export const expenseService = {
    * Create new expense
    */
   createExpense: (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<Expense>('/expenses', expenseData),
+    api.post<Expense>('/api/expenses', expenseData),
 
   /**
    * Update expense
@@ -351,52 +273,6 @@ export const expenseService = {
     api.get<Record<string, unknown>>('/expenses/stats', dateRange),
 };
 
-/**
- * Staff Management Service
- */
-export const staffService = {
-  /**
-   * Get all staff with pagination
-   */
-  getStaff: (params?: PaginationParams & { department?: string; isActive?: boolean }) =>
-    api.get<PaginatedResponse<Staff>>('/staff', params),
-
-  /**
-   * Get staff member by ID
-   */
-  getStaffMember: (id: string) =>
-    api.get<Staff>(`/staff/${id}`),
-
-  /**
-   * Create new staff member
-   */
-  createStaffMember: (staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<Staff>('/staff', staffData),
-
-  /**
-   * Update staff member
-   */
-  updateStaffMember: (id: string, staffData: Partial<Staff>) =>
-    api.put<Staff>(`/staff/${id}`, staffData),
-
-  /**
-   * Delete staff member
-   */
-  deleteStaffMember: (id: string) =>
-    api.delete(`/staff/${id}`),
-
-  /**
-   * Toggle staff active status
-   */
-  toggleStaffStatus: (id: string) =>
-    api.patch(`/staff/${id}/toggle-status`),
-
-  /**
-   * Get staff by department
-   */
-  getStaffByDepartment: (department: string, params?: PaginationParams) =>
-    api.get<PaginatedResponse<Staff>>('/staff/by-department', { department, ...params }),
-};
 
 /**
  * Dashboard Service
@@ -406,25 +282,25 @@ export const dashboardService = {
    * Get dashboard statistics
    */
   getStats: () =>
-    api.get<DashboardStats>('/dashboard/stats'),
+    api.get<DashboardStats>('/api/dashboard/stats'),
 
   /**
    * Get recent activities
    */
   getRecentActivities: (limit?: number) =>
-    api.get<Record<string, unknown>[]>('/dashboard/recent-activities', { limit }),
+    api.get<Record<string, unknown>[]>('/api/dashboard/recent-activities', { limit }),
 
   /**
    * Get chart data
    */
   getChartData: (type: string, dateRange?: DateRange) =>
-    api.get<Record<string, unknown>>(`/dashboard/charts/${type}`, dateRange),
+    api.get<Record<string, unknown>>(`/api/dashboard/charts/${type}`, dateRange),
 
   /**
    * Get notifications
    */
   getNotifications: (params?: PaginationParams & { isRead?: boolean }) =>
-    api.get<PaginatedResponse<Notification>>('/dashboard/notifications', params),
+    api.get<PaginatedResponse<Notification>>('/api/dashboard/notifications', params),
 
   /**
    * Mark notification as read
@@ -453,7 +329,7 @@ export const fileService = {
       formData.append('category', category);
     }
     
-    return api.post<UploadResponse>('/files/upload', formData, {
+    return api.post<UploadResponse>('/api/files/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -464,13 +340,200 @@ export const fileService = {
    * Delete file
    */
   deleteFile: (fileId: string) =>
-    api.delete(`/files/${fileId}`),
+    api.delete(`/api/files/${fileId}`),
 
   /**
    * Get file info
    */
   getFileInfo: (fileId: string) =>
-    api.get<Record<string, unknown>>(`/files/${fileId}`),
+    api.get<Record<string, unknown>>(`/api/files/${fileId}`),
+};
+
+/**
+ * Driver Management Service
+ */
+export const driverService = {
+  /**
+   * Get all drivers with pagination
+   */
+  getDrivers: (params?: PaginationParams & { isActive?: boolean; search?: string }) =>
+    api.get<Driver[]>('/api/drivers', params),
+
+  /**
+   * Get driver by ID
+   */
+  getDriver: (id: string) =>
+    api.get<Driver>(`/api/drivers/${id}`),
+
+  /**
+   * Create new driver
+   */
+  createDriver: (driverData: DriverCreateRequest) => {
+    console.log('Driver service: Creating driver with data:', driverData);
+    
+    // Strapi API often expects data wrapped in a 'data' object
+    const strapiData = {
+      data: driverData
+    };
+    
+    console.log('Driver service: Sending to API:', strapiData);
+    return api.post<Driver>('/api/drivers', strapiData);
+  },
+
+  /**
+   * Update driver
+   */
+  updateDriver: (id: string, driverData: DriverUpdateRequest) => {
+    console.log('Driver service: Updating driver with ID:', id);
+    console.log('Driver service: Driver data received:', driverData);
+    
+    // Filter out undefined values to avoid sending them to the API
+    const cleanedData = Object.fromEntries(
+      Object.entries(driverData).filter(([, value]) => value !== undefined)
+    );
+    
+    console.log('Driver service: Cleaned data:', cleanedData);
+    
+    // Strapi API expects data wrapped in a 'data' object
+    const strapiData = {
+      data: cleanedData
+    };
+    
+    console.log('Driver service: Final Strapi data:', strapiData);
+    return api.put<Driver>(`/api/drivers/${id}`, strapiData);
+  },
+
+  /**
+   * Delete driver
+   */
+  deleteDriver: (id: string) =>
+    api.delete(`/api/drivers/${id}`),
+
+  /**
+   * Toggle driver active status
+   */
+  toggleDriverStatus: (id: string) =>
+    api.patch(`/api/drivers/${id}/toggle-status`),
+
+  /**
+   * Search drivers
+   */
+  searchDrivers: (query: string, params?: PaginationParams) =>
+    api.get<Driver[]>('/api/drivers', { search: query, ...params }),
+
+  /**
+   * Get drivers by status
+   */
+  getDriversByStatus: (isActive: boolean, params?: PaginationParams) =>
+    api.get<Driver[]>('/api/drivers', { isActive, ...params }),
+};
+
+/**
+ * Staff Service
+ */
+export const staffService = {
+  /**
+   * Get all staff
+   */
+  getStaff: (params?: PaginationParams & { search?: string }) => {
+    console.log('Staff service: Getting staff with params:', params);
+    return api.get<StrapiResponse<Staff>>('/api/staffs', params);
+  },
+
+  /**
+   * Get single staff member
+   */
+  getStaffMember: (id: string) => api.get<Staff>(`/api/staffs/${id}`),
+
+  /**
+   * Create staff member
+   */
+  createStaff: (staffData: StaffCreateRequest) => {
+    console.log('Staff service: Creating staff with data:', staffData);
+    const strapiData = { data: staffData };
+    console.log('Staff service: Sending to API:', strapiData);
+    return api.post<Staff>('/api/staffs', strapiData);
+  },
+
+  /**
+   * Update staff member
+   */
+  updateStaff: (id: string, staffData: StaffUpdateRequest) => {
+    console.log('Staff service: Updating staff with ID:', id);
+    console.log('Staff service: Staff data received:', staffData);
+    const cleanedData = Object.fromEntries(
+      Object.entries(staffData).filter(([, value]) => value !== undefined)
+    );
+    console.log('Staff service: Cleaned data:', cleanedData);
+    const strapiData = { data: cleanedData };
+    console.log('Staff service: Final Strapi data:', strapiData);
+    return api.put<Staff>(`/api/staffs/${id}`, strapiData);
+  },
+
+  /**
+   * Delete staff member
+   */
+  deleteStaff: (id: string) => api.delete(`/api/staffs/${id}`),
+
+  /**
+   * Search staff
+   */
+  searchStaff: (query: string, params?: PaginationParams) =>
+    api.get<StrapiResponse<Staff>>('/api/staffs', { search: query, ...params }),
+};
+
+/**
+ * Trip Service
+ */
+export const tripService = {
+  /**
+   * Get all trips
+   */
+  getTrips: (params?: PaginationParams & { search?: string }) => {
+    console.log('Trip service: Getting trips with params:', params);
+    return api.get<StrapiResponse<Trip>>('/api/trips', params);
+  },
+
+  /**
+   * Get single trip
+   */
+  getTrip: (id: string) => api.get<Trip>(`/api/trips/${id}`),
+
+  /**
+   * Create trip
+   */
+  createTrip: (tripData: TripCreateRequest) => {
+    console.log('Trip service: Creating trip with data:', tripData);
+    const strapiData = { data: tripData };
+    console.log('Trip service: Sending to API:', strapiData);
+    return api.post<Trip>('/api/trips', strapiData);
+  },
+
+  /**
+   * Update trip
+   */
+  updateTrip: (id: string, tripData: TripUpdateRequest) => {
+    console.log('Trip service: Updating trip with ID:', id);
+    console.log('Trip service: Trip data received:', tripData);
+    const cleanedData = Object.fromEntries(
+      Object.entries(tripData).filter(([, value]) => value !== undefined)
+    );
+    console.log('Trip service: Cleaned data:', cleanedData);
+    const strapiData = { data: cleanedData };
+    console.log('Trip service: Final Strapi data:', strapiData);
+    return api.put<Trip>(`/api/trips/${id}`, strapiData);
+  },
+
+  /**
+   * Delete trip
+   */
+  deleteTrip: (id: string) => api.delete(`/api/trips/${id}`),
+
+  /**
+   * Search trips
+   */
+  searchTrips: (query: string, params?: PaginationParams) =>
+    api.get<StrapiResponse<Trip>>('/api/trips', { search: query, ...params }),
 };
 
 /**
@@ -481,7 +544,7 @@ export const searchService = {
    * Global search
    */
   globalSearch: (query: string, params?: PaginationParams) =>
-    api.get<PaginatedResponse<Record<string, unknown>>>('/search', { q: query, ...params }),
+    api.get<PaginatedResponse<Record<string, unknown>>>('/api/search', { q: query, ...params }),
 
   /**
    * Search vehicles
@@ -500,4 +563,40 @@ export const searchService = {
    */
   searchExpenses: (query: string, params?: PaginationParams) =>
     api.get<PaginatedResponse<Expense>>('/search/expenses', { q: query, ...params }),
+
+  /**
+   * Search drivers
+   */
+  searchDrivers: (query: string, params?: PaginationParams) =>
+    api.get<Driver[]>('/api/drivers', { search: query, ...params }),
+};
+
+/**
+ * User Service
+ */
+export const userService = {
+  /**
+   * Get current user profile with populated data
+   */
+  getCurrentUser: () =>
+    api.get<User>('/api/users/me?populate=*'),
+
+  /**
+   * Update current user profile
+   */
+  updateCurrentUser: (data: Partial<User>) =>
+    api.put<User>('/api/users/me', data),
+
+  /**
+   * Upload user avatar
+   */
+  uploadAvatar: (file: File) => {
+    const formData = new FormData();
+    formData.append('files', file);
+    return api.post<{ url: string }>('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };

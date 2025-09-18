@@ -91,7 +91,7 @@ export const refreshTokenThunk = createAsyncThunk<
       
       console.log('Redux: Refreshing token');
       
-      const response = await authService.refreshToken();
+      const response = await authService.refreshToken(currentToken);
       
       if (response.success && response.data?.jwt) {
         console.log('Redux: Token refresh successful');
@@ -168,7 +168,7 @@ export const validateSessionThunk = createAsyncThunk<
   { rejectValue: string }
 >(
   'auth/validateSession',
-  async (_, { getState, dispatch, rejectWithValue }) => {
+  async (_, { getState, dispatch }) => {
     try {
       const state = getState() as { auth: { token: string | null; user: User | null } };
       const { token, user } = state.auth;
@@ -200,7 +200,7 @@ export const validateSessionThunk = createAsyncThunk<
       console.error('Redux: Session validation error:', error);
       // If validation fails, logout the user
       dispatch(logoutAction());
-      return rejectWithValue('Session validation failed');
+      return false; // Return false instead of rejectWithValue to avoid unhandled promise rejection
     }
   }
 );
@@ -225,8 +225,16 @@ export const initializeAuthThunk = createAsyncThunk<
             const user = JSON.parse(userData);
             console.log('Redux: Found stored auth data, validating session');
             
-            // Validate the session
-            await dispatch(validateSessionThunk()).unwrap();
+            // First, set the auth state from localStorage
+            dispatch(loginSuccess({ user, token }));
+            
+            // Then validate the session
+            const isValid = await dispatch(validateSessionThunk()).unwrap();
+            
+            if (!isValid) {
+              console.log('Redux: Session validation failed during initialization');
+              dispatch(logoutAction());
+            }
           } catch (error) {
             console.error('Redux: Auth initialization validation failed:', error);
             dispatch(logoutAction());

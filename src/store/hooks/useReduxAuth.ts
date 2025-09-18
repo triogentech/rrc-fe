@@ -10,6 +10,7 @@ import {
   selectLastLoginTime,
   clearError,
   validateSession,
+  clearAuthData,
 } from '../slices/authSlice';
 import {
   loginThunk,
@@ -101,6 +102,12 @@ export const useReduxAuth = () => {
         // Validate session if we have stored data but Redux state is not authenticated
         dispatch(validateSession());
         return false; // Return false for now, validation will update state
+      } else if (!storedToken || !storedUserData) {
+        // No stored data, ensure we're logged out
+        if (isAuthenticated) {
+          dispatch(clearAuthData());
+        }
+        return false;
       }
     }
     return isAuthenticated;
@@ -111,18 +118,22 @@ export const useReduxAuth = () => {
     dispatch(clearError());
   }, [dispatch]);
 
+  // Clear all auth data function
+  const clearAllAuthData = useCallback(() => {
+    dispatch(clearAuthData());
+  }, [dispatch]);
+
   // Get user display name
   const getUserDisplayName = useCallback((): string => {
     if (!user) return 'Guest';
-    return user.username || user.email || `User ${user.id}`;
+    return user.email || `User ${user.id}`;
   }, [user]);
 
   // Check if user has specific role/permission (extend as needed)
   const hasRole = useCallback((role: string): boolean => {
     if (!user) return false;
     // Implement role checking logic based on your user structure
-    // This is a placeholder - adjust according to your User type structure
-    return (user as any).role === role || (user as any).roles?.includes(role);
+    return user.role === role;
   }, [user]);
 
   // Get session duration
@@ -158,6 +169,7 @@ export const useReduxAuth = () => {
     validateUserSession,
     checkAuth,
     clearAuthError,
+    clearAllAuthData,
 
     // Utilities
     getUserDisplayName,

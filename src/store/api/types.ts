@@ -4,7 +4,7 @@
  */
 
 // Generic API Response
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   success: boolean;
@@ -41,21 +41,34 @@ export interface BaseEntity {
 
 // User related types
 export interface User extends BaseEntity {
+  documentId: string;
+  username: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  provider: string;
+  confirmed: boolean;
+  blocked: boolean;
+  publishedAt: string;
+  lastLoginTimestamp?: string;
   role: UserRole;
-  avatar?: string;
-  isActive: boolean;
-  lastLoginAt?: string;
+  createdVehicles: unknown[];
+  updatedVehicles: unknown[];
+  createdTrips: unknown[];
+  updatedTrips: unknown[];
+  driver: unknown;
+  staff: unknown;
 }
 
-export enum UserRole {
-  ADMIN = 'admin',
-  MANAGER = 'manager',
-  USER = 'user',
-  DRIVER = 'driver',
+export interface UserRole {
+  id: number;
+  documentId: string;
+  name: string;
+  description: string;
+  type: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
 }
+
 
 // Authentication types
 export interface LoginRequest {
@@ -85,25 +98,46 @@ export interface RefreshTokenRequest {
 
 // Vehicle related types
 export interface Vehicle extends BaseEntity {
-  make: string;
+  documentId: string;
+  vehicleNumber: string;
   model: string;
-  year: number;
-  licensePlate: string;
-  vin: string;
-  color: string;
-  status: VehicleStatus;
-  driverId?: string;
-  driver?: User;
-  lastServiceDate?: string;
-  nextServiceDate?: string;
-  mileage: number;
+  type: VehicleType;
+  currentStatus: VehicleCurrentStatus;
+  active: boolean;
+  publishedAt: string;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+  trips?: string[];
 }
 
-export enum VehicleStatus {
-  ACTIVE = 'active',
-  MAINTENANCE = 'maintenance',
-  OUT_OF_SERVICE = 'out_of_service',
-  RETIRED = 'retired',
+export enum VehicleType {
+  TRUCK = 'truck',
+  CAR = 'car',
+  VAN = 'van',
+  BUS = 'bus',
+  MOTORCYCLE = 'motorcycle',
+}
+
+export enum VehicleCurrentStatus {
+  CHOOSE_HERE = 'choose_here',
+  IDLE = 'idle',
+  ASSIGNED = 'assigned',
+  ONGOING = 'ongoing',
+}
+
+export interface VehicleCreateRequest {
+  vehicleNumber: string;
+  model: string;
+  type: VehicleType;
+  currentStatus: VehicleCurrentStatus;
+  active: boolean;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+  trips?: string[];
+}
+
+export interface VehicleUpdateRequest extends Partial<VehicleCreateRequest> {
+  id: string;
 }
 
 // Trip related types
@@ -122,12 +156,6 @@ export interface Trip extends BaseEntity {
   driver?: User;
 }
 
-export enum TripStatus {
-  SCHEDULED = 'scheduled',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-}
 
 // Expense related types
 export interface Expense extends BaseEntity {
@@ -225,6 +253,121 @@ export interface UploadResponse {
   filename: string;
   size: number;
   mimeType: string;
+}
+
+// Driver related types
+export interface Driver extends BaseEntity {
+  documentId: string;
+  fullName: string;
+  countryDialCode: string;
+  contactNumber: string;
+  emgCountryDialCode: string;
+  emgContactNumber: string;
+  aadhaarNumber: string;
+  panNumber?: string;
+  address: string;
+  reference?: string;
+  publishedAt: string;
+  isActive?: boolean;
+  licenseNumber?: string;
+  licenseExpiry?: string;
+  dateOfBirth?: string;
+  bloodGroup?: string;
+  emergencyContactName?: string;
+  emergencyContactRelation?: string;
+}
+
+export interface DriverCreateRequest {
+  fullName: string;
+  countryDialCode: string;
+  contactNumber: string;
+  emgCountryDialCode: string;
+  emgContactNumber: string;
+  aadhaarNumber: string;
+  panNumber?: string;
+  address: string;
+  reference?: string;
+  licenseNumber?: string;
+  licenseExpiry?: string;
+  dateOfBirth?: string;
+  bloodGroup?: string;
+  emergencyContactName?: string;
+  emergencyContactRelation?: string;
+}
+
+export interface DriverUpdateRequest extends Partial<DriverCreateRequest> {
+  isActive?: boolean;
+}
+
+// Staff types
+export interface Staff extends BaseEntity {
+  documentId: string;
+  fullName: string;
+  countryDialCode: string;
+  contactNumber: string;
+  publishedAt: string;
+}
+
+export interface StaffCreateRequest {
+  fullName: string;
+  countryDialCode: string;
+  contactNumber: string;
+}
+
+export interface StaffUpdateRequest extends Partial<StaffCreateRequest> {
+  id: string;
+}
+
+// Trip related types
+export interface Trip extends BaseEntity {
+  documentId: string;
+  tripNumber: string;
+  estimatedStartTime: string;
+  estimatedEndTime: string;
+  actualEndTime?: string | null;
+  startPointCoords?: string | null;
+  endPointCoords?: string | null;
+  currentStatus: TripStatus;
+  publishedAt: string;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+}
+
+export enum TripStatus {
+  CREATED = 'created',
+  SCHEDULED = 'scheduled',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+export interface TripCreateRequest {
+  tripNumber: string;
+  estimatedStartTime: string;
+  estimatedEndTime: string;
+  actualEndTime?: string | null;
+  startPointCoords?: string | null;
+  endPointCoords?: string | null;
+  currentStatus: TripStatus;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+}
+
+export interface TripUpdateRequest extends Partial<TripCreateRequest> {
+  id: string;
+}
+
+// Strapi API Response format
+export interface StrapiResponse<T> {
+  data: T[];
+  meta: {
+    pagination: {
+      page: number;
+      pageSize: number;
+      pageCount: number;
+      total: number;
+    };
+  };
 }
 
 // Dashboard and Analytics types

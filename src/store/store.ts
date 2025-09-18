@@ -1,11 +1,21 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import authReducer from './slices/authSlice';
+import driversReducer from './slices/driversSlice';
+import vehiclesReducer from './slices/vehiclesSlice';
+import staffReducer from './slices/staffSlice';
+import tripsReducer from './slices/tripsSlice';
+import userReducer from './slices/userSlice';
 
 // Configure the store
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    drivers: driversReducer,
+    vehicles: vehiclesReducer,
+    staff: staffReducer,
+    trips: tripsReducer,
+    user: userReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

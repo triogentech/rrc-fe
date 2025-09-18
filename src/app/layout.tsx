@@ -5,6 +5,13 @@ import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ReduxProvider } from '@/store/providers/ReduxProvider';
+import AuthDebugger from '@/components/debug/AuthDebugger';
+
+// Import test utilities in development
+if (process.env.NODE_ENV === 'development') {
+  require('@/utils/testAuth');
+  require('@/utils/debugDriverCreation');
+}
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -21,7 +28,10 @@ export default function RootLayout({
         <ReduxProvider>
           <AuthProvider>
             <ThemeProvider>
-              <SidebarProvider>{children}</SidebarProvider>
+              <SidebarProvider>
+                {children}
+                {/* <AuthDebugger /> */}
+              </SidebarProvider>
             </ThemeProvider>
           </AuthProvider>
         </ReduxProvider>

@@ -1,132 +1,147 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { useTrips } from '@/store/hooks/useTrips';
+import { useTripCreateModal } from '@/hooks/useTripCreateModal';
+import TripCreateModal from '@/components/modals/TripCreateModal';
+import TripViewModal from '@/components/modals/TripViewModal';
+import TripEditModal from '@/components/modals/TripEditModal';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import type { Trip } from '@/store/api/types';
 
 const TripsPage = () => {
+  const {
+    trips,
+    isLoading,
+    error,
+    getTrips,
+    deleteTrip,
+    getTripStatusDisplayName,
+    getTripStatusColor,
+    formatTripDate,
+    getTripDuration,
+    isTripActive,
+    clearTripsError,
+  } = useTrips();
+
+
+  const { isOpen, openModal, closeModal, handleSuccess } = useTripCreateModal();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
 
-  // Static trip data
-  const allTrips = [
-    {
-      id: 1,
-      destination: "Paris, France",
-      startDate: "2024-03-15",
-      endDate: "2024-03-22",
-      duration: "7 days",
-      price: "$2,500",
-      status: "Upcoming",
-      participants: 12,
-      type: "Cultural Tour",
-      daysUntil: 45
-    },
-    {
-      id: 2,
-      destination: "Tokyo, Japan",
-      startDate: "2024-04-10",
-      endDate: "2024-04-18",
-      duration: "8 days",
-      price: "$3,200",
-      status: "Upcoming",
-      participants: 8,
-      type: "Adventure",
-      daysUntil: 71
-    },
-    {
-      id: 3,
-      destination: "New York, USA",
-      startDate: "2024-02-20",
-      endDate: "2024-02-25",
-      duration: "5 days",
-      price: "$1,800",
-      status: "Completed",
-      participants: 15,
-      type: "City Break"
-    },
-    {
-      id: 4,
-      destination: "Bali, Indonesia",
-      startDate: "2024-05-05",
-      endDate: "2024-05-12",
-      duration: "7 days",
-      price: "$2,100",
-      status: "Upcoming",
-      participants: 10,
-      type: "Beach Holiday",
-      daysUntil: 96
-    },
-    {
-      id: 5,
-      destination: "London, UK",
-      startDate: "2024-01-15",
-      endDate: "2024-01-22",
-      duration: "7 days",
-      price: "$2,300",
-      status: "Completed",
-      participants: 18,
-      type: "Cultural Tour"
-    }
-  ];
+  // Fetch trips on component mount
+  useEffect(() => {
+    getTrips();
+  }, [getTrips]);
 
-  const upcomingTrips = allTrips.filter(trip => trip.status === "Upcoming");
-  const pastTrips = allTrips.filter(trip => trip.status === "Completed");
+  // Filter trips based on active tab
+  const upcomingTrips = trips.filter(trip => isTripActive(trip));
+  const pastTrips = trips.filter(trip => trip.currentStatus === 'completed' || trip.currentStatus === 'cancelled');
+  const allTrips = trips;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Upcoming":
-        return "bg-blue-100 text-blue-800";
-      case "Completed":
-        return "bg-green-100 text-green-800";
-      case "Cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  // Handle search
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      getTrips({ search: searchQuery.trim() });
+    } else {
+      getTrips();
     }
   };
 
-  const getRatingStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-    
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <svg key={`full-${i}`} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      );
-    }
-    
-    if (hasHalfStar) {
-      stars.push(
-        <svg key="half" className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-          <defs>
-            <linearGradient id="halfStar">
-              <stop offset="50%" stopColor="currentColor" />
-              <stop offset="50%" stopColor="#e5e7eb" />
-            </linearGradient>
-          </defs>
-          <path fill="url(#halfStar)" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      );
-    }
-    
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <svg key={`empty-${i}`} className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      );
-    }
-    
-    return stars;
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    getTrips();
   };
+
+  // Handle trip creation success
+  const handleTripCreated = (trip: Trip) => {
+    console.log('Trip created successfully:', trip);
+    // Refresh the trips list
+    getTrips();
+    handleSuccess(trip);
+  };
+
+  // Handle view trip
+  const handleViewTrip = (trip: Trip) => {
+    setSelectedTrip(trip);
+    setViewModalOpen(true);
+  };
+
+  // Handle close view modal
+  const handleCloseViewModal = () => {
+    setViewModalOpen(false);
+    setSelectedTrip(null);
+  };
+
+  // Handle edit trip
+  const handleEditTrip = (trip: Trip) => {
+    setSelectedTrip(trip);
+    setEditModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setSelectedTrip(null);
+  };
+
+  // Handle trip update success
+  const handleTripUpdated = (trip: Trip) => {
+    console.log('Trip updated successfully:', trip);
+    // Refresh the trips list
+    getTrips();
+    handleCloseEditModal();
+  };
+
+  // Handle delete trip
+  const handleDeleteTrip = (trip: Trip) => {
+    setSelectedTrip(trip);
+    setDeleteModalOpen(true);
+  };
+
+  // Handle close delete modal
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setSelectedTrip(null);
+    setIsDeleting(false);
+  };
+
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
+    if (!selectedTrip) return;
+
+    setIsDeleting(true);
+    try {
+      const success = await deleteTrip(selectedTrip.documentId);
+      if (success) {
+        console.log('Trip deleted successfully');
+        // Refresh the trips list
+        getTrips();
+        handleCloseDeleteModal();
+      }
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
   const renderAllTrips = () => (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">All Trips Overview</h2>
-          <button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <button 
+            onClick={openModal}
+            className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
             + Add New Trip
           </button>
         </div>
@@ -137,25 +152,22 @@ const TripsPage = () => {
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Destination
+                Trip Number
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Dates
+                Start Time
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                End Time
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Duration
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Participants
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Type
+                Actual End Time
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
@@ -164,47 +176,54 @@ const TripsPage = () => {
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {allTrips.map((trip) => (
-              <tr key={trip.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <tr key={trip.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {trip.destination}
+                    {trip.tripNumber}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.startDate} - {trip.endDate}
+                    {formatTripDate(trip.estimatedStartTime)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.duration}
+                    {formatTripDate(trip.estimatedEndTime)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {trip.price}
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    {getTripDuration(trip)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(trip.status)}`}>
-                    {trip.status}
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTripStatusColor(trip.currentStatus)}`}>
+                    {getTripStatusDisplayName(trip.currentStatus)}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.participants}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.type}
+                    {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3">
+                  <button 
+                    onClick={() => handleViewTrip(trip)}
+                    className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3"
+                  >
+                    View
+                  </button>
+                  <button 
+                    onClick={() => handleEditTrip(trip)}
+                    className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3"
+                  >
                     Edit
                   </button>
-                  <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                  <button 
+                    onClick={() => handleDeleteTrip(trip)}
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                  >
                     Delete
                   </button>
                 </td>
@@ -222,7 +241,10 @@ const TripsPage = () => {
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Trips</h2>
-            <button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button 
+              onClick={openModal}
+              className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
               + Add New Trip
             </button>
           </div>
@@ -233,25 +255,22 @@ const TripsPage = () => {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Destination
+                  Trip Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Dates
+                  Start Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Duration
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Price
+                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Days Until
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Participants
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Type
+                  Actual End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
@@ -260,50 +279,54 @@ const TripsPage = () => {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {upcomingTrips.map((trip) => (
-                <tr key={trip.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr key={trip.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {trip.destination}
+                      {trip.tripNumber}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.startDate} - {trip.endDate}
+                      {formatTripDate(trip.estimatedStartTime)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.duration}
+                      {formatTripDate(trip.estimatedEndTime)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {trip.price}
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {getTripDuration(trip)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">
-                      {trip.daysUntil} days
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTripStatusColor(trip.currentStatus)}`}>
+                      {getTripStatusDisplayName(trip.currentStatus)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.participants}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.type}
+                      {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3">
-                      View Details
+                    <button 
+                      onClick={() => handleViewTrip(trip)}
+                      className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3"
+                    >
+                      View
                     </button>
-                    <button className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3">
+                    <button 
+                      onClick={() => handleEditTrip(trip)}
+                      className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3"
+                    >
                       Edit
                     </button>
-                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                    <button 
+                      onClick={() => handleDeleteTrip(trip)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                    >
                       Delete
                     </button>
                   </td>
@@ -327,21 +350,21 @@ const TripsPage = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                ${upcomingTrips.reduce((sum, trip) => sum + parseInt(trip.price.replace('$', '').replace(',', '')), 0).toLocaleString()}
+                {upcomingTrips.filter(trip => trip.currentStatus === 'scheduled').length}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Value</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Scheduled</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {upcomingTrips.reduce((sum, trip) => sum + trip.participants, 0)}
+                {upcomingTrips.filter(trip => trip.currentStatus === 'in_progress').length}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Participants</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">In Progress</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {Math.min(...upcomingTrips.map(trip => trip.daysUntil || 0))}
+                {upcomingTrips.filter(trip => trip.currentStatus === 'created').length}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Days to Next Trip</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Created</div>
             </div>
           </div>
         </div>
@@ -355,7 +378,10 @@ const TripsPage = () => {
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Past Trips</h2>
-            <button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button 
+              onClick={openModal}
+              className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
               + Add New Trip
             </button>
           </div>
@@ -366,25 +392,22 @@ const TripsPage = () => {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Destination
+                  Trip Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Dates
+                  Start Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Duration
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Price
+                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Rating
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Participants
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Type
+                  Actual End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
@@ -393,53 +416,54 @@ const TripsPage = () => {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {pastTrips.map((trip) => (
-                <tr key={trip.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr key={trip.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {trip.destination}
+                      {trip.tripNumber}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.startDate} - {trip.endDate}
+                      {formatTripDate(trip.estimatedStartTime)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.duration}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {trip.price}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      {getRatingStars(4.5)}
-                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                        4.5
-                      </span>
+                      {formatTripDate(trip.estimatedEndTime)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.participants}
+                      {getTripDuration(trip)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTripStatusColor(trip.currentStatus)}`}>
+                      {getTripStatusDisplayName(trip.currentStatus)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.type}
+                      {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3">
-                      View Photos
+                    <button 
+                      onClick={() => handleViewTrip(trip)}
+                      className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3"
+                    >
+                      View
                     </button>
-                    <button className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3">
-                      Write Review
+                    <button 
+                      onClick={() => handleEditTrip(trip)}
+                      className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 mr-3"
+                    >
+                      Edit
                     </button>
-                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                    <button 
+                      onClick={() => handleDeleteTrip(trip)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                    >
                       Delete
                     </button>
                   </td>
@@ -452,32 +476,34 @@ const TripsPage = () => {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Travel Summary</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Past Trips Summary</h2>
         </div>
         
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{pastTrips.length}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Trips Completed</div>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {pastTrips.filter(trip => trip.currentStatus === 'completed').length}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Completed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                {pastTrips.filter(trip => trip.currentStatus === 'cancelled').length}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Cancelled</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                ${pastTrips.reduce((sum, trip) => sum + parseInt(trip.price.replace('$', '').replace(',', '')), 0).toLocaleString()}
+                {pastTrips.length}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Spent</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Total Past Trips</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {pastTrips.reduce((sum, trip) => sum + trip.participants, 0)}
+                {pastTrips.filter(trip => trip.actualEndTime).length}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Travelers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                4.5
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Average Rating</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">With Actual End Time</div>
             </div>
           </div>
         </div>
@@ -506,6 +532,68 @@ const TripsPage = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trips Management</h1>
           <p className="text-gray-600 dark:text-gray-400">Manage and view all your trips in one place</p>
         </div>
+
+        {/* Search and Add Button */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <form onSubmit={handleSearch} className="flex-1 max-w-md">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search trips..."
+                className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </form>
+          <button
+            onClick={openModal}
+            className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            + Add New Trip
+          </button>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span>{error}</span>
+              <button
+                onClick={clearTripsError}
+                className="text-red-500 hover:text-red-700"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="mb-6 flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading trips...</span>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-6">
@@ -550,6 +638,37 @@ const TripsPage = () => {
       <div className="col-span-12">
         {renderContent()}
       </div>
+
+      {/* Modals */}
+      <TripCreateModal
+        isOpen={isOpen}
+        onClose={closeModal}
+        onSuccess={handleTripCreated}
+      />
+
+      <TripViewModal
+        isOpen={viewModalOpen}
+        onClose={handleCloseViewModal}
+        trip={selectedTrip}
+      />
+
+      <TripEditModal
+        isOpen={editModalOpen}
+        onClose={handleCloseEditModal}
+        trip={selectedTrip}
+        onSuccess={handleTripUpdated}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        title="Delete Trip"
+        message={`Are you sure you want to delete trip "${selectedTrip?.tripNumber}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

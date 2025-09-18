@@ -8,6 +8,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useReduxAuth } from "@/store/hooks/useReduxAuth";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +17,7 @@ export default function SignInForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login, isLoading } = useAuth();
+  const { user } = useReduxAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,13 +32,29 @@ export default function SignInForm() {
     try {
       const success = await login(identifier, password);
       if (success) {
-        // Login successful, redirect to dashboard
-        console.log('Login successful, redirecting to dashboard');
-        router.push('/');
+        // Wait a moment for Redux state to update
+        setTimeout(() => {
+          // Check user role after successful login
+          if (user) {
+            const userRole = user.role || 'Unknown';
+            
+            // Check if user has valid role for admin access
+            // Allow admin and manager roles, deny user and driver roles
+            if (userRole !== 'admin' && userRole !== 'manager') {
+              setError(`You have a role of ${userRole}. Access denied. Please contact administrator.`);
+              return;
+            }
+          }
+          
+          // Login successful and role is valid, redirect to dashboard
+          console.log('Login successful, redirecting to dashboard');
+          router.push('/');
+        }, 100);
       } else {
         setError("Invalid identifier or password");
       }
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error);
       setError("An error occurred during login. Please try again.");
     }
   };

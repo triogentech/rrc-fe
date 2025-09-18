@@ -9,7 +9,7 @@ import {
   GridIcon,
   HorizontaLDots,
   PaperPlaneIcon,
-  UserCircleIcon,
+  // UserCircleIcon,
   GroupIcon,
   BoxIcon,
   DollarLineIcon,
@@ -54,11 +54,11 @@ const navItems: NavItem[] = [
     name: "Staff",
     path: "/staff",
   },
-  {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
-  },
+  // {
+  //   icon: <UserCircleIcon />,
+  //   name: "User Profile",
+  //   path: "/profile",
+  // },
 
   // {
   //   name: "Forms",

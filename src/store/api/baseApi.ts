@@ -113,6 +113,21 @@ export class BaseApi {
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      
+      // Handle 403 Forbidden specifically
+      if (response.status === 403) {
+        console.warn('API: 403 Forbidden - Token may be invalid or expired');
+        // Clear invalid tokens from localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          localStorage.removeItem('lastLoginTime');
+          
+          // Dispatch a custom event to notify Redux store
+          window.dispatchEvent(new CustomEvent('authTokenExpired'));
+        }
+      }
+      
       throw {
         message: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
         status: response.status,
@@ -121,7 +136,42 @@ export class BaseApi {
       } as ApiError;
     }
 
+    // Handle empty responses (like 204 No Content for DELETE requests)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      console.log('API: Handling 204/empty response:', {
+        status: response.status,
+        contentLength: response.headers.get('content-length'),
+        contentType: response.headers.get('content-type')
+      });
+      return {
+        data: null as T,
+        message: 'Success',
+        success: true,
+        status: response.status,
+      };
+    }
+
+    // Check if response has content before trying to parse JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.log('API: Handling non-JSON response:', {
+        status: response.status,
+        contentType: contentType
+      });
+      return {
+        data: null as T,
+        message: 'Success',
+        success: true,
+        status: response.status,
+      };
+    }
+
+    console.log('API: Parsing JSON response:', {
+      status: response.status,
+      contentType: response.headers.get('content-type')
+    });
     const data = await response.json();
+    console.log('API: Parsed JSON data:', data);
     return {
       data: data.data || data,
       message: data.message,
