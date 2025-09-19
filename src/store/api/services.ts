@@ -6,6 +6,7 @@
 import { api } from './baseApi';
 import type {
   User,
+  UserRole,
   RegisterRequest,
   Vehicle,
   VehicleCreateRequest,
@@ -356,8 +357,13 @@ export const driverService = {
   /**
    * Get all drivers with pagination
    */
-  getDrivers: (params?: PaginationParams & { isActive?: boolean; search?: string }) =>
-    api.get<Driver[]>('/api/drivers', params),
+  getDrivers: (params?: PaginationParams & { isActive?: boolean; search?: string }) => {
+    const queryParams = {
+      ...params,
+      populate: '*'
+    };
+    return api.get<Driver[]>('/api/drivers', queryParams);
+  },
 
   /**
    * Get driver by ID
@@ -368,16 +374,55 @@ export const driverService = {
   /**
    * Create new driver
    */
-  createDriver: (driverData: DriverCreateRequest) => {
+  createDriver: async (driverData: DriverCreateRequest) => {
     console.log('Driver service: Creating driver with data:', driverData);
     
-    // Strapi API often expects data wrapped in a 'data' object
-    const strapiData = {
-      data: driverData
-    };
-    
-    console.log('Driver service: Sending to API:', strapiData);
-    return api.post<Driver>('/api/drivers', strapiData);
+    try {
+      // First, create the user using the user service
+      const userData = {
+        username: driverData.username,
+        email: driverData.email,
+        password: driverData.password,
+        confirmed: driverData.confirmed,
+        blocked: driverData.blocked,
+        role: driverData.role,
+      };
+      
+      console.log('Driver service: Creating user with data:', userData);
+      // Use the user service to create user via /api/users
+      const userResponse = await userService.createUser(userData);
+      console.log('Driver service: User created successfully:', userResponse);
+      console.log('Driver service: User response structure:', JSON.stringify(userResponse, null, 2));
+      
+      // Extract user ID from the response
+      const userId = userResponse.data?.documentId || userResponse.data?.id;
+      console.log('Driver service: Extracted user ID:', userId);
+      
+      if (!userId) {
+        throw new Error('Failed to extract user ID from user creation response');
+      }
+      
+      // Create driver with user reference
+      const driverPayload = {
+        data: {
+          ...driverData,
+          user: userId,
+          // Remove user fields from driver data
+          username: undefined,
+          email: undefined,
+          password: undefined,
+          confirmed: undefined,
+          blocked: undefined,
+          role: undefined,
+        }
+      };
+      
+      console.log('Driver service: Creating driver with user reference:', driverPayload);
+      return api.post<Driver>('/api/drivers', driverPayload);
+    } catch (error) {
+      console.error('Driver service: Error creating driver:', error);
+      throw error;
+    }
   },
 
   /**
@@ -491,7 +536,12 @@ export const tripService = {
    */
   getTrips: (params?: PaginationParams & { search?: string }) => {
     console.log('Trip service: Getting trips with params:', params);
-    return api.get<StrapiResponse<Trip>>('/api/trips', params);
+    const queryParams = {
+      ...params,
+      populate: '*'
+    };
+    console.log('Trip service: Query params with populate:', queryParams);
+    return api.get<StrapiResponse<Trip>>('/api/trips', queryParams);
   },
 
   /**
@@ -572,6 +622,26 @@ export const searchService = {
 };
 
 /**
+ * Role Service
+ */
+export const roleService = {
+  /**
+   * Get all available roles
+   */
+  getRoles: () =>
+    api.get<UserRole[]>('/api/users-permissions/roles'),
+
+  /**
+   * Get role by name
+   */
+  getRoleByName: async (roleName: string) => {
+    const response = await api.get<UserRole[]>('/api/users-permissions/roles');
+    const roles = response.data;
+    return roles.find(role => role.name === roleName);
+  },
+};
+
+/**
  * User Service
  */
 export const userService = {
@@ -580,6 +650,42 @@ export const userService = {
    */
   getCurrentUser: () =>
     api.get<User>('/api/users/me?populate=*'),
+
+  /**
+   * Create new user
+   */
+  createUser: async (userData: {
+    username: string;
+    email: string;
+    password: string;
+    confirmed?: boolean;
+    blocked?: boolean;
+    role?: string;
+  }) => {
+    // Get the role ID for the specified role name
+    let roleId = 1; // Default to role ID 1 (usually Authenticated)
+    
+    if (userData.role) {
+      try {
+        const role = await roleService.getRoleByName(userData.role);
+        if (role) {
+          roleId = role.id;
+        }
+      } catch (error) {
+        console.warn('Failed to fetch role, using default role ID:', error);
+      }
+    }
+
+    const payload = {
+      username: userData.username,
+      email: userData.email,
+      password: userData.password,
+      confirmed: userData.confirmed ?? true,
+      blocked: userData.blocked ?? false,
+      role: roleId,
+    };
+    return api.post<User>('/api/users', payload);
+  },
 
   /**
    * Update current user profile

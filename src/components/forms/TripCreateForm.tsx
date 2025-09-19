@@ -1,7 +1,10 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTrips } from '@/store/hooks/useTrips';
-import type { TripCreateRequest, Trip, TripStatus } from '@/store/api/types';
+import { useDrivers } from '@/store/hooks/useDrivers';
+import { useVehicles } from '@/store/hooks/useVehicles';
+import type { TripCreateRequest, Trip, LogisticsProvider } from '@/store/api/types';
+import { TripStatus } from '@/store/api/types';
 
 interface TripCreateFormProps {
   onSuccess: (trip: Trip) => void;
@@ -10,20 +13,74 @@ interface TripCreateFormProps {
 
 export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormProps) {
   const { createTrip, isLoading, error: apiError, clearTripsError } = useTrips();
+  const { drivers, getDrivers, isLoading: driversLoading } = useDrivers();
+  const { vehicles, getVehicles, isLoading: vehiclesLoading } = useVehicles();
 
   const [formData, setFormData] = useState<TripCreateRequest>({
     tripNumber: '',
     estimatedStartTime: '',
     estimatedEndTime: '',
-    actualEndTime: null,
+    startPoint: '',
+    endPoint: '',
+    totalTripDistanceInKM: 0,
     startPointCoords: null,
     endPointCoords: null,
     currentStatus: 'created' as TripStatus,
+    driver: undefined,
+    vehicle: undefined,
+    logisticsProvider: undefined,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [logisticsProviders, setLogisticsProviders] = useState<LogisticsProvider[]>([]);
 
-  const handleInputChange = (field: keyof TripCreateRequest, value: string | null) => {
+  // Fetch data when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch drivers and vehicles
+        await Promise.all([
+          getDrivers({ isActive: true }),
+          getVehicles({ active: true })
+        ]);
+        
+        // For now, we'll create mock logistics providers
+        // In a real app, you'd fetch these from an API
+        setLogisticsProviders([
+          {
+            id: '1',
+            documentId: 'lp1',
+            name: 'ABC Logistics',
+            contactNumber: '+1234567890',
+            email: 'contact@abclogistics.com',
+            address: '123 Main St, City, State',
+            isActive: true,
+            publishedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '2',
+            documentId: 'lp2',
+            name: 'XYZ Transport',
+            contactNumber: '+0987654321',
+            email: 'info@xyztransport.com',
+            address: '456 Oak Ave, City, State',
+            isActive: true,
+            publishedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ]);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, [getDrivers, getVehicles]);
+
+  const handleInputChange = (field: keyof TripCreateRequest, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -46,6 +103,18 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     
     if (!formData.estimatedEndTime) {
       newErrors.estimatedEndTime = 'Estimated End Time is required';
+    }
+    
+    if (!formData.startPoint.trim()) {
+      newErrors.startPoint = 'Start Point is required';
+    }
+    
+    if (!formData.endPoint.trim()) {
+      newErrors.endPoint = 'End Point is required';
+    }
+    
+    if (formData.totalTripDistanceInKM <= 0) {
+      newErrors.totalTripDistanceInKM = 'Total Trip Distance must be greater than 0';
     }
     
     if (formData.estimatedStartTime && formData.estimatedEndTime) {
@@ -78,11 +147,9 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   };
 
   const tripStatusOptions: { value: TripStatus; label: string }[] = [
-    { value: 'created', label: 'Created' },
-    { value: 'scheduled', label: 'Scheduled' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
+    { value: TripStatus.CREATED, label: 'Created' },
+    { value: TripStatus.IN_TRANSIT, label: 'In Transit' },
+    { value: TripStatus.COMPLETED, label: 'Completed' },
   ];
 
   return (
@@ -164,19 +231,126 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           {errors.estimatedEndTime && <p className="mt-1 text-sm text-red-600">{errors.estimatedEndTime}</p>}
         </div>
 
-        {/* Actual End Time */}
+        {/* Start Point */}
         <div>
-          <label htmlFor="actualEndTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Actual End Time (Optional)
+          <label htmlFor="startPoint" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Start Point *
           </label>
           <input
-            type="datetime-local"
-            id="actualEndTime"
-            value={formData.actualEndTime || ''}
-            onChange={(e) => handleInputChange('actualEndTime', e.target.value || null)}
+            type="text"
+            id="startPoint"
+            value={formData.startPoint}
+            onChange={(e) => handleInputChange('startPoint', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., New York, NY"
             disabled={isLoading}
           />
+          {errors.startPoint && <p className="mt-1 text-sm text-red-600">{errors.startPoint}</p>}
+        </div>
+
+        {/* End Point */}
+        <div>
+          <label htmlFor="endPoint" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            End Point *
+          </label>
+          <input
+            type="text"
+            id="endPoint"
+            value={formData.endPoint}
+            onChange={(e) => handleInputChange('endPoint', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., Los Angeles, CA"
+            disabled={isLoading}
+          />
+          {errors.endPoint && <p className="mt-1 text-sm text-red-600">{errors.endPoint}</p>}
+        </div>
+
+        {/* Total Trip Distance */}
+        <div>
+          <label htmlFor="totalTripDistanceInKM" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Total Trip Distance (KM) *
+          </label>
+          <input
+            type="number"
+            id="totalTripDistanceInKM"
+            value={formData.totalTripDistanceInKM}
+            onChange={(e) => handleInputChange('totalTripDistanceInKM', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., 150.5"
+            min="0"
+            step="0.1"
+            disabled={isLoading}
+          />
+          {errors.totalTripDistanceInKM && <p className="mt-1 text-sm text-red-600">{errors.totalTripDistanceInKM}</p>}
+        </div>
+
+        {/* Driver Selection */}
+        <div>
+          <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Driver
+          </label>
+          <select
+            id="driver"
+            value={formData.driver || ''}
+            onChange={(e) => handleInputChange('driver', e.target.value || null)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading || driversLoading}
+          >
+            <option value="">Select a driver (optional)</option>
+            {drivers.map((driver) => (
+              <option key={driver.documentId} value={driver.documentId}>
+                {driver.fullName} - {driver.contactNumber}
+              </option>
+            ))}
+          </select>
+          {driversLoading && (
+            <p className="mt-1 text-sm text-gray-500">Loading drivers...</p>
+          )}
+        </div>
+
+        {/* Vehicle Selection */}
+        <div>
+          <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Vehicle
+          </label>
+          <select
+            id="vehicle"
+            value={formData.vehicle || ''}
+            onChange={(e) => handleInputChange('vehicle', e.target.value || null)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading || vehiclesLoading}
+          >
+            <option value="">Select a vehicle (optional)</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.documentId} value={vehicle.documentId}>
+                {vehicle.vehicleNumber} - {vehicle.model} ({vehicle.type})
+              </option>
+            ))}
+          </select>
+          {vehiclesLoading && (
+            <p className="mt-1 text-sm text-gray-500">Loading vehicles...</p>
+          )}
+        </div>
+
+        {/* Logistics Provider Selection */}
+        <div>
+          <label htmlFor="logisticsProvider" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Logistics Provider
+          </label>
+          <select
+            id="logisticsProvider"
+            value={formData.logisticsProvider || ''}
+            onChange={(e) => handleInputChange('logisticsProvider', e.target.value || null)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading}
+          >
+            <option value="">Select a logistics provider (optional)</option>
+            {logisticsProviders.map((provider) => (
+              <option key={provider.documentId} value={provider.documentId}>
+                {provider.name} - {provider.contactNumber}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Start Point Coordinates */}

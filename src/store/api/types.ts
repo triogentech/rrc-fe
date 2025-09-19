@@ -140,21 +140,7 @@ export interface VehicleUpdateRequest extends Partial<VehicleCreateRequest> {
   id: string;
 }
 
-// Trip related types
-export interface Trip extends BaseEntity {
-  vehicleId: string;
-  driverId: string;
-  startLocation: string;
-  endLocation: string;
-  startTime: string;
-  endTime?: string;
-  distance: number;
-  status: TripStatus;
-  purpose: string;
-  notes?: string;
-  vehicle?: Vehicle;
-  driver?: User;
-}
+// Trip related types (old interface - removed)
 
 
 // Expense related types
@@ -275,6 +261,8 @@ export interface Driver extends BaseEntity {
   bloodGroup?: string;
   emergencyContactName?: string;
   emergencyContactRelation?: string;
+  user?: User;
+  trips?: Trip[];
 }
 
 export interface DriverCreateRequest {
@@ -293,6 +281,13 @@ export interface DriverCreateRequest {
   bloodGroup?: string;
   emergencyContactName?: string;
   emergencyContactRelation?: string;
+  // User creation fields
+  username: string;
+  email: string;
+  password: string;
+  confirmed?: boolean;
+  blocked?: boolean;
+  role?: string;
 }
 
 export interface DriverUpdateRequest extends Partial<DriverCreateRequest> {
@@ -318,6 +313,33 @@ export interface StaffUpdateRequest extends Partial<StaffCreateRequest> {
   id: string;
 }
 
+// Logistics Provider related types
+export interface LogisticsProvider extends BaseEntity {
+  documentId: string;
+  name: string;
+  contactNumber: string;
+  email: string;
+  address: string;
+  isActive: boolean;
+  publishedAt: string;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+}
+
+export interface LogisticsProviderCreateRequest {
+  name: string;
+  contactNumber: string;
+  email: string;
+  address: string;
+  isActive: boolean;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+}
+
+export interface LogisticsProviderUpdateRequest extends Partial<LogisticsProviderCreateRequest> {
+  id?: string;
+}
+
 // Trip related types
 export interface Trip extends BaseEntity {
   documentId: string;
@@ -325,20 +347,25 @@ export interface Trip extends BaseEntity {
   estimatedStartTime: string;
   estimatedEndTime: string;
   actualEndTime?: string | null;
+  startPoint: string;
+  endPoint: string;
+  totalTripDistanceInKM: number;
   startPointCoords?: string | null;
   endPointCoords?: string | null;
   currentStatus: TripStatus;
   publishedAt: string;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
+  // Relations
+  driver?: string | Driver;
+  vehicle?: string | Vehicle;
+  logisticsProvider?: string | LogisticsProvider;
 }
 
 export enum TripStatus {
   CREATED = 'created',
-  SCHEDULED = 'scheduled',
-  IN_PROGRESS = 'in_progress',
+  IN_TRANSIT = 'in-transit',
   COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
 }
 
 export interface TripCreateRequest {
@@ -346,15 +373,21 @@ export interface TripCreateRequest {
   estimatedStartTime: string;
   estimatedEndTime: string;
   actualEndTime?: string | null;
+  startPoint: string;
+  endPoint: string;
+  totalTripDistanceInKM: number;
   startPointCoords?: string | null;
   endPointCoords?: string | null;
   currentStatus: TripStatus;
+  driver?: string;
+  vehicle?: string;
+  logisticsProvider?: string;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
 }
 
 export interface TripUpdateRequest extends Partial<TripCreateRequest> {
-  id: string;
+  id?: string;
 }
 
 // Strapi API Response format

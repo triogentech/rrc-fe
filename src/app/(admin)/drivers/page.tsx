@@ -5,6 +5,7 @@ import { useDriverCreateModal } from '@/hooks/useDriverCreateModal';
 import DriverCreateModal from '@/components/modals/DriverCreateModal';
 import DriverViewModal from '@/components/modals/DriverViewModal';
 import DriverEditModal from '@/components/modals/DriverEditModal';
+import DriverTripsModal from '@/components/modals/DriverTripsModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Driver } from '@/store/api/types';
 
@@ -27,6 +28,7 @@ export default function DriversPage() {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [tripsModalOpen, setTripsModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -102,6 +104,18 @@ export default function DriversPage() {
     setDeleteModalOpen(false);
     setSelectedDriver(null);
     setIsDeleting(false);
+  };
+
+  // Handle view trips
+  const handleViewTrips = (driver: Driver) => {
+    setSelectedDriver(driver);
+    setTripsModalOpen(true);
+  };
+
+  // Handle close trips modal
+  const handleCloseTripsModal = () => {
+    setTripsModalOpen(false);
+    setSelectedDriver(null);
   };
 
   // Handle confirm delete
@@ -243,7 +257,9 @@ export default function DriversPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Emergency Contact
                       </th>
-                      
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Trips
+                      </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Added Date
                       </th>
@@ -283,6 +299,17 @@ export default function DriversPage() {
                           <div className="text-sm text-gray-900 dark:text-white">
                             {getDriverEmergencyContact(driver)}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => handleViewTrips(driver)}
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-full text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 transition-colors"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            {driver.trips?.length || 0} trips
+                          </button>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
@@ -374,6 +401,13 @@ export default function DriversPage() {
         onClose={handleCloseEditModal}
         driver={selectedDriver}
         onSuccess={handleDriverUpdated}
+      />
+
+      {/* Driver Trips Modal */}
+      <DriverTripsModal
+        isOpen={tripsModalOpen}
+        onClose={handleCloseTripsModal}
+        driver={selectedDriver}
       />
 
       {/* Delete Confirmation Modal */}

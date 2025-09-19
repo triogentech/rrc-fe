@@ -104,14 +104,10 @@ export const useTrips = () => {
     switch (status) {
       case 'created':
         return 'Created';
-      case 'scheduled':
-        return 'Scheduled';
-      case 'in_progress':
-        return 'In Progress';
+      case 'in-transit':
+        return 'In Transit';
       case 'completed':
         return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
       default:
         return status;
     }
@@ -121,14 +117,10 @@ export const useTrips = () => {
     switch (status) {
       case 'created':
         return 'bg-blue-100 text-blue-800';
-      case 'scheduled':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
+      case 'in-transit':
         return 'bg-green-100 text-green-800';
       case 'completed':
         return 'bg-gray-100 text-gray-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -153,7 +145,7 @@ export const useTrips = () => {
   }, []);
 
   const isTripActive = useCallback((trip: Trip): boolean => {
-    return trip.currentStatus === 'in_progress' || trip.currentStatus === 'scheduled';
+    return trip.currentStatus === 'in-transit';
   }, []);
 
   // Count functions
@@ -169,8 +161,8 @@ export const useTrips = () => {
     return tripsState.trips.filter((trip: Trip) => trip.currentStatus === 'completed').length;
   }, [tripsState]);
 
-  const getCancelledTripsCount = useCallback((): number => {
-    return tripsState.trips.filter((trip: Trip) => trip.currentStatus === 'cancelled').length;
+  const getOngoingTripsCount = useCallback((): number => {
+    return tripsState.trips.filter((trip: Trip) => trip.currentStatus === 'in-transit').length;
   }, [tripsState]);
 
   return {
@@ -204,6 +196,6 @@ export const useTrips = () => {
     getTotalTripsCount,
     getActiveTripsCount,
     getCompletedTripsCount,
-    getCancelledTripsCount,
+    getOngoingTripsCount,
   };
 };
