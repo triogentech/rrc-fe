@@ -102,20 +102,20 @@ export interface Vehicle extends BaseEntity {
   vehicleNumber: string;
   model: string;
   type: VehicleType;
-  currentStatus: VehicleCurrentStatus;
-  active: boolean;
+  currentStatus: VehicleCurrentStatus | string;
+  isActive: boolean | null;
   publishedAt: string;
-  cstmCreatedBy?: string;
-  cstmUpdatedBy?: string;
+  cstmCreatedBy?: string | User;
+  cstmUpdatedBy?: string | User | User[];
   trips?: string[];
 }
 
 export enum VehicleType {
   TRUCK = 'truck',
-  CAR = 'car',
-  VAN = 'van',
-  BUS = 'bus',
-  MOTORCYCLE = 'motorcycle',
+  // CAR = 'car',
+  // VAN = 'van',
+  // BUS = 'bus',
+  // MOTORCYCLE = 'motorcycle',
 }
 
 export enum VehicleCurrentStatus {
@@ -129,7 +129,7 @@ export interface VehicleCreateRequest {
   vehicleNumber: string;
   model: string;
   type: VehicleType;
-  currentStatus: VehicleCurrentStatus;
+  currentStatus: VehicleCurrentStatus | string;
   active: boolean;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
@@ -137,7 +137,8 @@ export interface VehicleCreateRequest {
 }
 
 export interface VehicleUpdateRequest extends Partial<VehicleCreateRequest> {
-  id: string;
+  id?: string;
+  isActive?: boolean;
 }
 
 // Trip related types (old interface - removed)
@@ -261,6 +262,8 @@ export interface Driver extends BaseEntity {
   bloodGroup?: string;
   emergencyContactName?: string;
   emergencyContactRelation?: string;
+  cstmCreatedBy?: string | User;
+  cstmUpdatedBy?: string | User | User[];
   user?: User;
   trips?: Trip[];
 }
@@ -288,10 +291,16 @@ export interface DriverCreateRequest {
   confirmed?: boolean;
   blocked?: boolean;
   role?: string;
+  // Custom fields
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
 }
 
 export interface DriverUpdateRequest extends Partial<DriverCreateRequest> {
   isActive?: boolean;
+  // Custom fields
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
 }
 
 // Staff types
@@ -301,16 +310,32 @@ export interface Staff extends BaseEntity {
   countryDialCode: string;
   contactNumber: string;
   publishedAt: string;
+  cstmCreatedBy?: string | User;
+  cstmUpdatedBy?: string | User | User[];
+  user?: User;
 }
 
 export interface StaffCreateRequest {
   fullName: string;
   countryDialCode: string;
   contactNumber: string;
+  // User creation fields
+  username: string;
+  email: string;
+  password: string;
+  confirmed?: boolean;
+  blocked?: boolean;
+  role?: string;
+  // Custom fields
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
 }
 
 export interface StaffUpdateRequest extends Partial<StaffCreateRequest> {
-  id: string;
+  id?: string;
+  // Custom fields
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
 }
 
 // Logistics Provider related types
@@ -354,8 +379,8 @@ export interface Trip extends BaseEntity {
   endPointCoords?: string | null;
   currentStatus: TripStatus;
   publishedAt: string;
-  cstmCreatedBy?: string;
-  cstmUpdatedBy?: string;
+  cstmCreatedBy?: string | User;
+  cstmUpdatedBy?: string | User | User[];
   // Relations
   driver?: string | Driver;
   vehicle?: string | Vehicle;

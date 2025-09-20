@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { VehicleCreateRequest, Vehicle } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
 
@@ -11,6 +12,7 @@ interface VehicleCreateFormProps {
 
 export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreateFormProps) {
   const { createVehicle, isLoading } = useVehicles();
+  const { user } = useReduxAuth();
   
   const [formData, setFormData] = useState<VehicleCreateRequest>({
     vehicleNumber: '',
@@ -18,6 +20,9 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
     type: VehicleType.TRUCK,
     currentStatus: VehicleCurrentStatus.CHOOSE_HERE,
     active: true,
+    // Custom fields
+    cstmCreatedBy: user?.documentId || user?.id || '',
+    cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Partial<VehicleCreateRequest>>({});
@@ -61,17 +66,19 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
 
     try {
       // Clean and prepare data for API
-      const cleanedData: VehicleCreateRequest = {
+      const cleanedData = {
         vehicleNumber: formData.vehicleNumber.trim(),
         model: formData.model.trim(),
         type: formData.type,
         currentStatus: formData.currentStatus,
-        active: formData.active,
+        // Custom fields
+        cstmCreatedBy: formData.cstmCreatedBy,
+        cstmUpdatedBy: formData.cstmUpdatedBy,
       };
 
       console.log('Submitting vehicle data:', cleanedData);
       
-      const vehicle = await createVehicle(cleanedData);
+      const vehicle = await createVehicle(cleanedData as VehicleCreateRequest);
       
       if (vehicle) {
         console.log('Vehicle created successfully:', vehicle);
@@ -140,10 +147,10 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             disabled={isLoading}
           >
             <option value={VehicleType.TRUCK}>Truck</option>
-            <option value={VehicleType.CAR}>Car</option>
+            {/* <option value={VehicleType.CAR}>Car</option>
             <option value={VehicleType.VAN}>Van</option>
             <option value={VehicleType.BUS}>Bus</option>
-            <option value={VehicleType.MOTORCYCLE}>Motorcycle</option>
+            <option value={VehicleType.MOTORCYCLE}>Motorcycle</option> */}
           </select>
         </div>
 

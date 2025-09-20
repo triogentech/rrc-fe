@@ -11,7 +11,7 @@ export default function ApiTest() {
     setResult('Testing...');
     
     try {
-      console.log('Making API call to:', 'http://localhost:1337/api/auth/local');
+      console.log('Making API call to:', 'http://localhost:1340/api/auth/local');
       
       const response = await authService.login({
         identifier: "7838624872",
@@ -33,7 +33,7 @@ export default function ApiTest() {
     setResult('Testing direct fetch...');
     
     try {
-      const response = await fetch('http://localhost:1337/api/auth/local', {
+      const response = await fetch('http://localhost:1340/api/auth/local', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

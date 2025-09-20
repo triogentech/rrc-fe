@@ -8,6 +8,7 @@ import DriverEditModal from '@/components/modals/DriverEditModal';
 import DriverTripsModal from '@/components/modals/DriverTripsModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Driver } from '@/store/api/types';
+import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 
 export default function DriversPage() {
   const {
@@ -264,6 +265,12 @@ export default function DriversPage() {
                         Added Date
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created By
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Updated By
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -314,6 +321,42 @@ export default function DriversPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
                             {formatDate(driver.createdAt)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {driver.cstmCreatedBy ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getUserDisplayName(driver.cstmCreatedBy)}
+                                </span>
+                                {getUserEmail(driver.cstmCreatedBy) && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {getUserEmail(driver.cstmCreatedBy)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {driver.cstmUpdatedBy ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getUserDisplayName(driver.cstmUpdatedBy)}
+                                </span>
+                                {getUserEmail(driver.cstmUpdatedBy) && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {getUserEmail(driver.cstmUpdatedBy)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

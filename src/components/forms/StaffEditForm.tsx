@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useStaff } from '@/store/hooks/useStaff';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Staff, StaffUpdateRequest } from '@/store/api/types';
 
 interface StaffEditFormProps {
@@ -11,12 +12,15 @@ interface StaffEditFormProps {
 
 export default function StaffEditForm({ staff, onSuccess, onCancel }: StaffEditFormProps) {
   const { updateStaff, isLoading } = useStaff();
+  const { user } = useReduxAuth();
 
   const [formData, setFormData] = useState<StaffUpdateRequest>({
-    id: staff.id,
     fullName: staff.fullName,
     countryDialCode: staff.countryDialCode,
     contactNumber: staff.contactNumber,
+    // Custom fields
+    cstmCreatedBy: staff.cstmCreatedBy,
+    cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Partial<StaffUpdateRequest>>({});

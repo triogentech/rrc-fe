@@ -9,6 +9,7 @@ import TripActualEndTimeModal from '@/components/modals/TripActualEndTimeModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Trip, TripStatus } from '@/store/api/types';
 import { EyeIcon, PencilIcon, TrashBinIcon } from '@/icons';
+import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 
 const TripsPage = () => {
   const {
@@ -251,6 +252,12 @@ const TripsPage = () => {
                 Actual End Time
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Created By
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Updated By
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -377,6 +384,42 @@ const TripsPage = () => {
                     {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                   </div>
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    {trip.cstmCreatedBy ? (
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {getUserDisplayName(trip.cstmCreatedBy)}
+                        </span>
+                        {getUserEmail(trip.cstmCreatedBy) && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {getUserEmail(trip.cstmCreatedBy)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    {trip.cstmUpdatedBy ? (
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {getUserDisplayName(trip.cstmUpdatedBy)}
+                        </span>
+                        {getUserEmail(trip.cstmUpdatedBy) && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {getUserEmail(trip.cstmUpdatedBy)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center space-x-2">
                     <button 
@@ -461,6 +504,12 @@ const TripsPage = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actual End Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Created By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Updated By
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
@@ -589,6 +638,42 @@ const TripsPage = () => {
                       {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.cstmCreatedBy ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {getUserDisplayName(trip.cstmCreatedBy)}
+                          </span>
+                          {getUserEmail(trip.cstmCreatedBy) && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getUserEmail(trip.cstmCreatedBy)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.cstmUpdatedBy ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {getUserDisplayName(trip.cstmUpdatedBy)}
+                          </span>
+                          {getUserEmail(trip.cstmUpdatedBy) && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getUserEmail(trip.cstmUpdatedBy)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button 
@@ -707,6 +792,12 @@ const TripsPage = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actual End Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Created By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Updated By
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
@@ -833,6 +924,42 @@ const TripsPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.cstmCreatedBy ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {getUserDisplayName(trip.cstmCreatedBy)}
+                          </span>
+                          {getUserEmail(trip.cstmCreatedBy) && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getUserEmail(trip.cstmCreatedBy)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.cstmUpdatedBy ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {getUserDisplayName(trip.cstmUpdatedBy)}
+                          </span>
+                          {getUserEmail(trip.cstmUpdatedBy) && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getUserEmail(trip.cstmUpdatedBy)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

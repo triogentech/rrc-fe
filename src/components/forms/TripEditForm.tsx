@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTrips } from '@/store/hooks/useTrips';
 import { useDrivers } from '@/store/hooks/useDrivers';
 import { useVehicles } from '@/store/hooks/useVehicles';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Trip, TripUpdateRequest, LogisticsProvider } from '@/store/api/types';
 import { TripStatus } from '@/store/api/types';
 
@@ -16,6 +17,7 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
   const { updateTrip, isLoading, error: apiError, clearTripsError } = useTrips();
   const { drivers, getDrivers, isLoading: driversLoading } = useDrivers();
   const { vehicles, getVehicles, isLoading: vehiclesLoading } = useVehicles();
+  const { user } = useReduxAuth();
 
   const [formData, setFormData] = useState<TripUpdateRequest>({
     tripNumber: trip.tripNumber,
@@ -30,6 +32,9 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
     driver: typeof trip.driver === 'string' ? trip.driver : trip.driver?.documentId,
     vehicle: typeof trip.vehicle === 'string' ? trip.vehicle : trip.vehicle?.documentId,
     logisticsProvider: typeof trip.logisticsProvider === 'string' ? trip.logisticsProvider : trip.logisticsProvider?.documentId,
+    // Custom fields
+    cstmCreatedBy: trip.cstmCreatedBy,
+    cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -95,8 +100,11 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
       driver: typeof trip.driver === 'string' ? trip.driver : trip.driver?.documentId,
       vehicle: typeof trip.vehicle === 'string' ? trip.vehicle : trip.vehicle?.documentId,
       logisticsProvider: typeof trip.logisticsProvider === 'string' ? trip.logisticsProvider : trip.logisticsProvider?.documentId,
+      // Custom fields
+      cstmCreatedBy: trip.cstmCreatedBy,
+      cstmUpdatedBy: user?.documentId || user?.id || '',
     });
-  }, [trip]);
+  }, [trip, user]);
 
   const handleInputChange = (field: keyof TripUpdateRequest, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));

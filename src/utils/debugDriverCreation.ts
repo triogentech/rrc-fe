@@ -8,7 +8,7 @@ export const testDriverCreation = async (driverData: any) => {
   console.log('Data being sent:', driverData);
   
   try {
-    const response = await fetch('http://localhost:1337/api/drivers', {
+    const response = await fetch('http://localhost:1340/api/drivers', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

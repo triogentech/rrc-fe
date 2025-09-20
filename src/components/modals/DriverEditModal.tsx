@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useDrivers } from '@/store/hooks/useDrivers';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Driver, DriverUpdateRequest } from '@/store/api/types';
 
 interface DriverEditModalProps {
@@ -12,6 +13,7 @@ interface DriverEditModalProps {
 
 export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: DriverEditModalProps) {
   const { updateDriver, isLoading } = useDrivers();
+  const { user } = useReduxAuth();
   
   const [formData, setFormData] = useState<DriverUpdateRequest>({
     fullName: '',
@@ -30,6 +32,9 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
     emergencyContactName: '',
     emergencyContactRelation: '',
     isActive: true,
+    // Custom fields
+    cstmCreatedBy: '',
+    cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Partial<DriverUpdateRequest>>({});
@@ -54,9 +59,12 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
         emergencyContactName: driver.emergencyContactName || '',
         emergencyContactRelation: driver.emergencyContactRelation || '',
         isActive: driver.isActive ?? true,
+        // Custom fields
+        cstmCreatedBy: typeof driver.cstmCreatedBy === 'string' ? driver.cstmCreatedBy : driver.cstmCreatedBy?.documentId || '',
+        cstmUpdatedBy: user?.documentId || user?.id || '',
       });
     }
-  }, [driver]);
+  }, [driver, user]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -150,7 +158,8 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
         emgContactNumber: formData.emgContactNumber?.trim(),
         aadhaarNumber: formData.aadhaarNumber?.trim(),
         address: formData.address?.trim(),
-        isActive: formData.isActive,
+        // Custom fields
+        cstmUpdatedBy: formData.cstmUpdatedBy,
       };
 
       // Only include optional fields if they have values
@@ -181,7 +190,7 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
 
       console.log('Updating driver data:', cleanedData);
 
-      const updatedDriver = await updateDriver(driver.id, cleanedData);
+      const updatedDriver = await updateDriver(driver.documentId, cleanedData);
       if (updatedDriver) {
         onSuccess?.(updatedDriver);
         onClose();

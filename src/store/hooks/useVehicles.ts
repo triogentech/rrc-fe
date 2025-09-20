@@ -141,8 +141,12 @@ export const useVehicles = () => {
   }, []);
 
   // Get vehicle status display name
-  const getVehicleStatusDisplayName = useCallback((status: VehicleCurrentStatus): string => {
-    const statusMap: Record<VehicleCurrentStatus, string> = {
+  const getVehicleStatusDisplayName = useCallback((status: VehicleCurrentStatus | string): string => {
+    const statusMap: Record<string, string> = {
+      'choose_here': 'Choose here',
+      'idle': 'Idle',
+      'assigned': 'Assigned',
+      'ongoing': 'Ongoing',
       [VehicleCurrentStatus.CHOOSE_HERE]: 'Choose here',
       [VehicleCurrentStatus.IDLE]: 'Idle',
       [VehicleCurrentStatus.ASSIGNED]: 'Assigned',
@@ -152,19 +156,23 @@ export const useVehicles = () => {
   }, []);
 
   // Get vehicle status color
-  const getVehicleStatusColor = useCallback((status: VehicleCurrentStatus): string => {
-    const colorMap: Record<VehicleCurrentStatus, string> = {
-      [VehicleCurrentStatus.CHOOSE_HERE]: 'text-gray-500 dark:text-gray-400',
-      [VehicleCurrentStatus.IDLE]: 'text-gray-600 dark:text-gray-400',
-      [VehicleCurrentStatus.ASSIGNED]: 'text-blue-600 dark:text-blue-400',
-      [VehicleCurrentStatus.ONGOING]: 'text-green-600 dark:text-green-400',
+  const getVehicleStatusColor = useCallback((status: VehicleCurrentStatus | string): string => {
+    const colorMap: Record<string, string> = {
+      'choose_here': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      'idle': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      'assigned': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'ongoing': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      [VehicleCurrentStatus.CHOOSE_HERE]: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      [VehicleCurrentStatus.IDLE]: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      [VehicleCurrentStatus.ASSIGNED]: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      [VehicleCurrentStatus.ONGOING]: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     };
-    return colorMap[status] || 'text-gray-600 dark:text-gray-400';
+    return colorMap[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
   }, []);
 
   // Check if vehicle is active
   const isVehicleActive = useCallback((vehicle: Vehicle): boolean => {
-    return vehicle.active === true;
+    return vehicle.isActive === true;
   }, []);
 
   // Get vehicles count by status

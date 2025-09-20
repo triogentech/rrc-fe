@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Vehicle, VehicleUpdateRequest } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
 
@@ -12,14 +13,17 @@ interface VehicleEditFormProps {
 
 export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: VehicleEditFormProps) {
   const { updateVehicle, isLoading } = useVehicles();
+  const { user } = useReduxAuth();
   
   const [formData, setFormData] = useState<VehicleUpdateRequest>({
-    id: vehicle.id,
     vehicleNumber: vehicle.vehicleNumber,
     model: vehicle.model,
     type: vehicle.type,
     currentStatus: vehicle.currentStatus,
-    active: vehicle.active,
+    isActive: vehicle.isActive ?? true, // Use isActive and default to true if null
+    // Custom fields
+    cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
+    cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Partial<VehicleUpdateRequest>>({});
@@ -27,14 +31,16 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
   // Update form data when vehicle prop changes
   useEffect(() => {
     setFormData({
-      id: vehicle.id,
       vehicleNumber: vehicle.vehicleNumber,
       model: vehicle.model,
       type: vehicle.type,
       currentStatus: vehicle.currentStatus,
-      active: vehicle.active,
+      isActive: vehicle.isActive ?? true, // Use isActive and default to true if null
+      // Custom fields
+      cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
+      cstmUpdatedBy: user?.documentId || user?.id || '',
     });
-  }, [vehicle]);
+  }, [vehicle, user]);
 
   const handleInputChange = (field: keyof VehicleUpdateRequest, value: string | boolean) => {
     setFormData(prev => ({
@@ -75,18 +81,19 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
 
     try {
       // Clean and prepare data for API
-      const cleanedData: VehicleUpdateRequest = {
-        id: formData.id!,
+      const cleanedData = {
         vehicleNumber: formData.vehicleNumber?.trim(),
         model: formData.model?.trim(),
         type: formData.type,
         currentStatus: formData.currentStatus,
-        active: formData.active,
+        isActive: formData.isActive, // Include isActive in the request
+        // Custom fields
+        cstmUpdatedBy: formData.cstmUpdatedBy,
       };
 
       console.log('Updating vehicle with data:', cleanedData);
       
-      const updatedVehicle = await updateVehicle(vehicle.id, cleanedData);
+      const updatedVehicle = await updateVehicle(vehicle.documentId, cleanedData);
       
       if (updatedVehicle) {
         console.log('Vehicle updated successfully:', updatedVehicle);
@@ -155,10 +162,10 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             disabled={isLoading}
           >
             <option value={VehicleType.TRUCK}>Truck</option>
-            <option value={VehicleType.CAR}>Car</option>
+            {/* <option value={VehicleType.CAR}>Car</option>
             <option value={VehicleType.VAN}>Van</option>
             <option value={VehicleType.BUS}>Bus</option>
-            <option value={VehicleType.MOTORCYCLE}>Motorcycle</option>
+            <option value={VehicleType.MOTORCYCLE}>Motorcycle</option> */}
           </select>
         </div>
 
@@ -187,14 +194,14 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             Active Status
           </label>
           <div className="flex items-center space-x-3">
-            <span className={`text-sm font-medium ${!formData.active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+            <span className={`text-sm font-medium ${!formData.isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
               Inactive
             </span>
             <button
               type="button"
-              onClick={() => handleInputChange('active', !formData.active)}
+              onClick={() => handleInputChange('isActive', !formData.isActive)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                formData.active 
+                formData.isActive 
                   ? 'bg-blue-600' 
                   : 'bg-gray-200 dark:bg-gray-700'
               } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
@@ -202,11 +209,11 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  formData.active ? 'translate-x-6' : 'translate-x-1'
+                  formData.isActive ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>
-            <span className={`text-sm font-medium ${formData.active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+            <span className={`text-sm font-medium ${formData.isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
               Active
             </span>
           </div>

@@ -6,7 +6,7 @@
 
 // API Configuration
 export const API_CONFIG = {
-  baseURL: 'http://localhost:1337/api',
+  baseURL: 'http://localhost:1340/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

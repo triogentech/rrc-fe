@@ -42,7 +42,7 @@ export const authService = {
     
     // Try with absolute URL first
     try {
-      const response = await fetch('http://localhost:1337/api/auth/local', {
+      const response = await fetch('http://localhost:1340/api/auth/local', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,12 @@ export const vehicleService = {
    */
   getVehicles: (params?: PaginationParams & { currentStatus?: string; active?: boolean; search?: string }) => {
     console.log('Vehicle service: Getting vehicles with params:', params);
-    return api.get<StrapiResponse<Vehicle>>('/api/vehicles', params);
+    const queryParams = {
+      ...params,
+      populate: '*'
+    };
+    console.log('Vehicle service: Query params with populate:', queryParams);
+    return api.get<StrapiResponse<Vehicle>>('/api/vehicles', queryParams);
   },
 
   /**
@@ -482,7 +487,12 @@ export const staffService = {
    */
   getStaff: (params?: PaginationParams & { search?: string }) => {
     console.log('Staff service: Getting staff with params:', params);
-    return api.get<StrapiResponse<Staff>>('/api/staffs', params);
+    const queryParams = {
+      ...params,
+      populate: '*'
+    };
+    console.log('Staff service: Query params with populate:', queryParams);
+    return api.get<StrapiResponse<Staff>>('/api/staffs', queryParams);
   },
 
   /**
@@ -493,11 +503,55 @@ export const staffService = {
   /**
    * Create staff member
    */
-  createStaff: (staffData: StaffCreateRequest) => {
+  createStaff: async (staffData: StaffCreateRequest) => {
     console.log('Staff service: Creating staff with data:', staffData);
-    const strapiData = { data: staffData };
-    console.log('Staff service: Sending to API:', strapiData);
-    return api.post<Staff>('/api/staffs', strapiData);
+    
+    try {
+      // First, create the user using the user service
+      const userData = {
+        username: staffData.username,
+        email: staffData.email,
+        password: staffData.password,
+        confirmed: staffData.confirmed,
+        blocked: staffData.blocked,
+        role: staffData.role ?? 'Staff',
+      };
+      
+      console.log('Staff service: Creating user with data:', userData);
+      // Use the user service to create user via /api/users
+      const userResponse = await userService.createUser(userData);
+      console.log('Staff service: User created successfully:', userResponse);
+      console.log('Staff service: User response structure:', JSON.stringify(userResponse, null, 2));
+      
+      // Extract user ID from the response
+      const userId = userResponse.data?.documentId || userResponse.data?.id;
+      console.log('Staff service: Extracted user ID:', userId);
+      
+      if (!userId) {
+        throw new Error('Failed to extract user ID from user creation response');
+      }
+      
+      // Create staff with user reference
+      const staffPayload = {
+        data: {
+          ...staffData,
+          user: userId,
+          // Remove user fields from staff data
+          username: undefined,
+          email: undefined,
+          password: undefined,
+          confirmed: undefined,
+          blocked: undefined,
+          role: undefined,
+        }
+      };
+      
+      console.log('Staff service: Creating staff with user reference:', staffPayload);
+      return api.post<Staff>('/api/staffs', staffPayload);
+    } catch (error) {
+      console.error('Staff service: Error creating staff:', error);
+      throw error;
+    }
   },
 
   /**

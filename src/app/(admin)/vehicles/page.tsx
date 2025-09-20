@@ -7,6 +7,7 @@ import VehicleViewModal from '@/components/modals/VehicleViewModal';
 import VehicleEditModal from '@/components/modals/VehicleEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Vehicle } from '@/store/api/types';
+import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 
 export default function VehiclesPage() {
   const {
@@ -248,6 +249,12 @@ export default function VehiclesPage() {
                         Added Date
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created By
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Updated By
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -281,16 +288,52 @@ export default function VehiclesPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            vehicle.active 
+                            vehicle.isActive === true
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                               : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                           }`}>
-                            {vehicle.active ? 'Active' : 'Inactive'}
+                            {vehicle.isActive === true ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
                             {formatDate(vehicle.createdAt)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.cstmCreatedBy ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getUserDisplayName(vehicle.cstmCreatedBy)}
+                                </span>
+                                {getUserEmail(vehicle.cstmCreatedBy) && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {getUserEmail(vehicle.cstmCreatedBy)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.cstmUpdatedBy ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getUserDisplayName(vehicle.cstmUpdatedBy)}
+                                </span>
+                                {getUserEmail(vehicle.cstmUpdatedBy) && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {getUserEmail(vehicle.cstmUpdatedBy)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

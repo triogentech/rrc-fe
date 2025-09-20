@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTrips } from '@/store/hooks/useTrips';
 import { useDrivers } from '@/store/hooks/useDrivers';
 import { useVehicles } from '@/store/hooks/useVehicles';
+import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { TripCreateRequest, Trip, LogisticsProvider } from '@/store/api/types';
 import { TripStatus } from '@/store/api/types';
 
@@ -15,6 +16,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   const { createTrip, isLoading, error: apiError, clearTripsError } = useTrips();
   const { drivers, getDrivers, isLoading: driversLoading } = useDrivers();
   const { vehicles, getVehicles, isLoading: vehiclesLoading } = useVehicles();
+  const { user } = useReduxAuth();
 
   const [formData, setFormData] = useState<TripCreateRequest>({
     tripNumber: '',
@@ -29,6 +31,9 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     driver: undefined,
     vehicle: undefined,
     logisticsProvider: undefined,
+    // Custom fields
+    cstmCreatedBy: user?.documentId || user?.id || '',
+    cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});

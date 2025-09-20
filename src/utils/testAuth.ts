@@ -26,7 +26,7 @@ export const testApiCall = async () => {
   console.log('=== Testing API Call ===');
   
   try {
-    const response = await fetch('http://localhost:1337/api/drivers', {
+    const response = await fetch('http://localhost:1340/api/drivers', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

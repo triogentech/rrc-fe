@@ -7,6 +7,7 @@ import StaffViewModal from '@/components/modals/StaffViewModal';
 import StaffEditModal from '@/components/modals/StaffEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Staff } from '@/store/api/types';
+import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 
 export default function StaffPage() {
   const {
@@ -18,7 +19,6 @@ export default function StaffPage() {
     deleteStaff,
     getStaffDisplayName,
     getStaffContactInfo,
-    isStaffActive,
     clearStaffError,
   } = useStaff();
 
@@ -238,11 +238,15 @@ export default function StaffPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Contact
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Status
-                      </th>
+                     
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Added Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created By
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Updated By
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Actions
@@ -272,17 +276,44 @@ export default function StaffPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            isStaffActive(staff)
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          }`}>
-                            {isStaffActive(staff) ? 'Active' : 'Inactive'}
-                          </span>
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {formatDate(staff.createdAt)}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(staff.createdAt)}
+                            {staff.cstmCreatedBy ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getUserDisplayName(staff.cstmCreatedBy)}
+                                </span>
+                                {getUserEmail(staff.cstmCreatedBy) && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {getUserEmail(staff.cstmCreatedBy)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {staff.cstmUpdatedBy ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getUserDisplayName(staff.cstmUpdatedBy)}
+                                </span>
+                                {getUserEmail(staff.cstmUpdatedBy) && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {getUserEmail(staff.cstmUpdatedBy)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
