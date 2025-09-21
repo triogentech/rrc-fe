@@ -21,6 +21,9 @@ import type {
   Driver,
   DriverCreateRequest,
   DriverUpdateRequest,
+  Transaction,
+  TransactionCreateRequest,
+  TransactionUpdateRequest,
   DashboardStats,
   PaginatedResponse,
   PaginationParams,
@@ -363,11 +366,32 @@ export const driverService = {
    * Get all drivers with pagination
    */
   getDrivers: (params?: PaginationParams & { isActive?: boolean; search?: string }) => {
-    const queryParams = {
-      ...params,
-      populate: '*'
+    const { page, limit, search, isActive, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
     };
-    return api.get<Driver[]>('/api/drivers', queryParams);
+
+    // Add pagination parameters in the correct Strapi format
+    if (page || limit) {
+      queryParams.pagination = {
+        ...(page && { page }),
+        ...(limit && { pageSize: limit })
+      };
+    }
+
+    // Add search parameter for fullName field
+    if (search) {
+      queryParams['filters[fullName][$containsi]'] = search;
+    }
+
+    // Add isActive filter if provided
+    if (isActive !== undefined) {
+      queryParams['filters[isActive][$eq]'] = isActive;
+    }
+
+    return api.get<StrapiResponse<Driver>>('/api/drivers', queryParams);
   },
 
   /**
@@ -588,13 +612,34 @@ export const tripService = {
   /**
    * Get all trips
    */
-  getTrips: (params?: PaginationParams & { search?: string }) => {
-    console.log('Trip service: Getting trips with params:', params);
-    const queryParams = {
-      ...params,
-      populate: '*'
+  getTrips: (params?: PaginationParams & { search?: string; status?: string }) => {
+    const { page, limit, search, status, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
     };
-    console.log('Trip service: Query params with populate:', queryParams);
+
+    // Add pagination parameters in the correct Strapi format
+    if (page || limit) {
+      queryParams.pagination = {
+        ...(page && { page }),
+        ...(limit && { pageSize: limit })
+      };
+    }
+
+    // Add search parameter if provided
+    if (search) {
+      queryParams.search = search;
+    }
+
+    // Add status filter if provided
+    if (status) {
+      queryParams['filters[currentStatus][$eq]'] = status;
+    }
+
+    console.log('Trip service: Getting trips with params:', params);
+    console.log('Trip service: Query params with pagination:', queryParams);
     return api.get<StrapiResponse<Trip>>('/api/trips', queryParams);
   },
 
@@ -636,8 +681,25 @@ export const tripService = {
   /**
    * Search trips
    */
-  searchTrips: (query: string, params?: PaginationParams) =>
-    api.get<StrapiResponse<Trip>>('/api/trips', { search: query, ...params }),
+  searchTrips: (query: string, params?: PaginationParams) => {
+    const { page, limit, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      search: query,
+      ...otherParams
+    };
+
+    // Add pagination parameters in the correct Strapi format
+    if (page || limit) {
+      queryParams.pagination = {
+        ...(page && { page }),
+        ...(limit && { pageSize: limit })
+      };
+    }
+
+    return api.get<StrapiResponse<Trip>>('/api/trips', queryParams);
+  },
 };
 
 /**
@@ -759,4 +821,72 @@ export const userService = {
       },
     });
   },
+};
+
+/**
+ * Transaction Service
+ */
+export const transactionService = {
+  /**
+   * Get all transactions with populated data
+   */
+  getTransactions: (params?: PaginationParams & { search?: string; status?: string; type?: string; method?: string }) => {
+    const { page, limit, search, status, type, method, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    // Add pagination parameters in the correct Strapi format
+    if (page || limit) {
+      queryParams.pagination = {
+        ...(page && { page }),
+        ...(limit && { pageSize: limit })
+      };
+    }
+
+    // Add filters
+    if (search) {
+      queryParams['filters[$or]'] = [
+        { transactionId: { $containsi: search } },
+        { description: { $containsi: search } }
+      ];
+    }
+    if (status) {
+      queryParams['filters[transactionStatus][$eq]'] = status;
+    }
+    if (type) {
+      queryParams['filters[type][$eq]'] = type;
+    }
+    if (method) {
+      queryParams['filters[method][$eq]'] = method;
+    }
+
+    return api.get<StrapiResponse<Transaction>>('/api/transactions', queryParams);
+  },
+
+  /**
+   * Get transaction by ID
+   */
+  getTransaction: (id: string) =>
+    api.get<Transaction>(`/api/transactions/${id}?populate=*`),
+
+  /**
+   * Create new transaction
+   */
+  createTransaction: (data: TransactionCreateRequest) =>
+    api.post<Transaction>('/api/transactions', { data }),
+
+  /**
+   * Update transaction
+   */
+  updateTransaction: (id: string, data: TransactionUpdateRequest) =>
+    api.put<Transaction>(`/api/transactions/${id}`, { data }),
+
+  /**
+   * Delete transaction
+   */
+  deleteTransaction: (id: string) =>
+    api.delete(`/api/transactions/${id}`),
 };

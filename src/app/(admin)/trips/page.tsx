@@ -1,13 +1,15 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useTrips } from '@/store/hooks/useTrips';
+import { useVehicles } from '@/store/hooks/useVehicles';
 import { useTripCreateModal } from '@/hooks/useTripCreateModal';
 import TripCreateModal from '@/components/modals/TripCreateModal';
 import TripViewModal from '@/components/modals/TripViewModal';
 import TripEditModal from '@/components/modals/TripEditModal';
 import TripActualEndTimeModal from '@/components/modals/TripActualEndTimeModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
-import type { Trip, TripStatus } from '@/store/api/types';
+import type { Trip } from '@/store/api/types';
+import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 import { EyeIcon, PencilIcon, TrashBinIcon } from '@/icons';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 
@@ -16,6 +18,7 @@ const TripsPage = () => {
     trips,
     isLoading,
     error,
+    pagination,
     getTrips,
     updateTrip,
     deleteTrip,
@@ -26,9 +29,11 @@ const TripsPage = () => {
     clearTripsError,
   } = useTrips();
 
+  const { updateVehicle } = useVehicles();
+
 
   const { isOpen, openModal, closeModal, handleSuccess } = useTripCreateModal();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -43,25 +48,33 @@ const TripsPage = () => {
     getTrips();
   }, [getTrips]);
 
-  // Filter trips based on active tab
-  const upcomingTrips = trips.filter(trip => isTripActive(trip));
-  const pastTrips = trips.filter(trip => trip.currentStatus === 'completed');
-  const allTrips = trips;
+  // Filter trips based on active tab and status filter
+  const filteredTrips = statusFilter 
+    ? trips.filter(trip => trip.currentStatus === statusFilter)
+    : trips;
+  
+  const upcomingTrips = statusFilter 
+    ? filteredTrips.filter(trip => isTripActive(trip))
+    : trips.filter(trip => isTripActive(trip));
+  const pastTrips = statusFilter 
+    ? filteredTrips.filter(trip => trip.currentStatus === 'completed')
+    : trips.filter(trip => trip.currentStatus === 'completed');
+  const allTrips = filteredTrips;
 
-  // Handle search
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      getTrips({ search: searchQuery.trim() });
+  // Handle status filter change
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilter(status);
+    if (status) {
+      getTrips({ status, page: 1 });
     } else {
-      getTrips();
+      getTrips({ page: 1 });
     }
   };
 
-  // Handle clear search
-  const handleClearSearch = () => {
-    setSearchQuery('');
-    getTrips();
+  // Handle clear filter
+  const handleClearFilter = () => {
+    setStatusFilter('');
+    getTrips({ page: 1 });
   };
 
   // Handle trip creation success
@@ -153,10 +166,42 @@ const TripsPage = () => {
       // For other status changes, update directly
       const updateData = {
         currentStatus: newStatus,
+        // Include required fields to avoid validation errors
+        startPoint: trip.startPoint || '',
+        endPoint: trip.endPoint || '',
+        totalTripDistanceInKM: trip.totalTripDistanceInKM || 0,
       };
       console.log('Update data:', updateData);
       await updateTrip(trip.documentId, updateData);
       console.log('Trip status updated successfully');
+      
+      // Update vehicle status based on trip status
+      if (trip.vehicle && typeof trip.vehicle === 'object' && trip.vehicle.documentId) {
+        let vehicleStatus: VehicleCurrentStatus;
+        
+        if (newStatus === TripStatus.CREATED) {
+          vehicleStatus = VehicleCurrentStatus.ASSIGNED;
+        } else if (newStatus === TripStatus.IN_TRANSIT) {
+          vehicleStatus = VehicleCurrentStatus.IN_TRANSIT;
+        } else if (newStatus === TripStatus.COMPLETED) {
+          vehicleStatus = VehicleCurrentStatus.IDLE;
+        } else {
+          vehicleStatus = trip.vehicle.currentStatus as VehicleCurrentStatus || VehicleCurrentStatus.IDLE;
+        }
+        
+        console.log('Updating vehicle status:', trip.vehicle.documentId, 'to', vehicleStatus);
+        
+        try {
+          await updateVehicle(trip.vehicle.documentId, {
+            currentStatus: vehicleStatus,
+          });
+          console.log('Vehicle status updated successfully');
+        } catch (vehicleError) {
+          console.error('Error updating vehicle status:', vehicleError);
+          // Don't throw here, as trip was already updated successfully
+        }
+      }
+      
       // Refresh the trips list
       getTrips();
     } catch (error) {
@@ -183,11 +228,30 @@ const TripsPage = () => {
       const updateData = {
         currentStatus: 'completed' as TripStatus,
         actualEndTime: actualEndTime,
+        // Include required fields to avoid validation errors
+        startPoint: selectedTrip.startPoint || '',
+        endPoint: selectedTrip.endPoint || '',
+        totalTripDistanceInKM: selectedTrip.totalTripDistanceInKM || 0,
       };
       
       console.log('Update data:', updateData);
       await updateTrip(selectedTrip.documentId, updateData);
       console.log('Trip completed with actual end time successfully');
+      
+      // Update vehicle status to 'idle' when trip is completed
+      if (selectedTrip.vehicle && typeof selectedTrip.vehicle === 'object' && selectedTrip.vehicle.documentId) {
+        console.log('Updating vehicle status to idle:', selectedTrip.vehicle.documentId);
+        
+        try {
+          await updateVehicle(selectedTrip.vehicle.documentId, {
+            currentStatus: VehicleCurrentStatus.IDLE,
+          });
+          console.log('Vehicle status updated to idle successfully');
+        } catch (vehicleError) {
+          console.error('Error updating vehicle status to idle:', vehicleError);
+          // Don't throw here, as trip was already updated successfully
+        }
+      }
       
       // Refresh the trips list
       getTrips();
@@ -450,6 +514,36 @@ const TripsPage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {pagination && pagination.pageCount > 1 && (
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {((pagination.page - 1) * pagination.pageSize) + 1} to {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total} results
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => getTrips({ page: pagination.page - 1 })}
+                disabled={pagination.page === 1}
+                className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Page {pagination.page} of {pagination.pageCount}
+              </span>
+              <button
+                onClick={() => getTrips({ page: pagination.page + 1 })}
+                disabled={pagination.page === pagination.pageCount}
+                className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -738,6 +832,36 @@ const TripsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Pagination */}
+      {pagination && pagination.pageCount > 1 && (
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {((pagination.page - 1) * pagination.pageSize) + 1} to {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total} results
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => getTrips({ page: pagination.page - 1 })}
+                disabled={pagination.page === 1}
+                className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Page {pagination.page} of {pagination.pageCount}
+              </span>
+              <button
+                onClick={() => getTrips({ page: pagination.page + 1 })}
+                disabled={pagination.page === pagination.pageCount}
+                className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1028,6 +1152,36 @@ const TripsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Pagination */}
+      {pagination && pagination.pageCount > 1 && (
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {((pagination.page - 1) * pagination.pageSize) + 1} to {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total} results
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => getTrips({ page: pagination.page - 1 })}
+                disabled={pagination.page === 1}
+                className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Page {pagination.page} of {pagination.pageCount}
+              </span>
+              <button
+                onClick={() => getTrips({ page: pagination.page + 1 })}
+                disabled={pagination.page === pagination.pageCount}
+                className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1053,35 +1207,33 @@ const TripsPage = () => {
           <p className="text-gray-600 dark:text-gray-400">Manage and view all your trips in one place</p>
         </div>
 
-        {/* Search and Add Button */}
+        {/* Filter and Add Button */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <form onSubmit={handleSearch} className="flex-1 max-w-md">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search trips..."
-                className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              {searchQuery && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Filter by Status:
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">All Status</option>
+                <option value="created">Created</option>
+                <option value="in-transit">In Transit</option>
+                <option value="completed">Completed</option>
+              </select>
+              {statusFilter && (
                 <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={handleClearFilter}
+                  className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  Clear
                 </button>
               )}
             </div>
-          </form>
+          </div>
           <button
             onClick={openModal}
             className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -1089,6 +1241,26 @@ const TripsPage = () => {
             + Add New Trip
           </button>
         </div>
+
+        {/* Active Filter Summary */}
+        {statusFilter && (
+          <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Active Filter:</span>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                  Status: {statusFilter}
+                </span>
+              </div>
+              <button
+                onClick={handleClearFilter}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+              >
+                Clear Filter
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (

@@ -123,6 +123,7 @@ export enum VehicleCurrentStatus {
   IDLE = 'idle',
   ASSIGNED = 'assigned',
   ONGOING = 'ongoing',
+  IN_TRANSIT = 'in-transit',
 }
 
 export interface VehicleCreateRequest {
@@ -467,4 +468,50 @@ export enum NotificationType {
   TRIP_UPDATE = 'trip_update',
   EXPENSE_APPROVAL = 'expense_approval',
   MAINTENANCE_REMINDER = 'maintenance_reminder',
+}
+
+// Transaction types
+export interface Transaction extends BaseEntity {
+  documentId: string;
+  transactionId: string;
+  type: 'debit' | 'credit';
+  amount: number;
+  description: string;
+  transactionStatus: 'success' | 'pending' | 'failed' | 'cancelled';
+  currency: string;
+  method: 'upi' | 'card' | 'wallet' | 'cash';
+  trip?: {
+    id: number;
+    documentId: string;
+    tripNumber: string;
+    startPoint: string;
+    endPoint: string;
+    currentStatus: string;
+    totalTripDistanceInKM: number;
+    estimatedStartTime: string;
+    estimatedEndTime: string;
+    actualEndTime?: string | null;
+    vendorCode?: string | null;
+    vendorName?: string | null;
+  };
+  cstmCreatedBy?: User;
+  cstmUpdatedBy?: User[];
+  publishedAt: string;
+}
+
+export interface TransactionCreateRequest {
+  transactionId: string;
+  type: 'debit' | 'credit';
+  amount: number;
+  description: string;
+  transactionStatus: 'success' | 'pending' | 'failed' | 'cancelled';
+  currency: string;
+  method: 'upi' | 'card' | 'wallet' | 'cash';
+  trip?: string;
+  cstmCreatedBy?: string;
+  cstmUpdatedBy?: string;
+}
+
+export interface TransactionUpdateRequest extends Partial<TransactionCreateRequest> {
+  id?: string;
 }
