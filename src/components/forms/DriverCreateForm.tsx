@@ -1,7 +1,8 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDrivers } from '@/store/hooks/useDrivers';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
+import { useAadhaarValidation } from '@/hooks/useAadhaarValidation';
 import type { DriverCreateRequest, Driver } from '@/store/api/types';
 
 interface DriverCreateFormProps {
@@ -15,7 +16,6 @@ interface DriverCreateFormProps {
 export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onStepChange, totalSteps }: DriverCreateFormProps) {
   const { createDriver, isLoading } = useDrivers();
   const { user } = useReduxAuth();
-  
   const [formData, setFormData] = useState<DriverCreateRequest>({
     fullName: '',
     countryDialCode: '+91',
@@ -39,6 +39,30 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
   });
 
   const [errors, setErrors] = useState<Partial<DriverCreateRequest>>({});
+
+  // Aadhaar validation hook
+  const { 
+    isValid: isAadhaarValid, 
+    isChecking: isCheckingAadhaar, 
+    isUsed: isAadhaarUsed, 
+    existingDriver,
+    error: aadhaarError, 
+    validateAadhaar,
+    clearValidation: clearAadhaarValidation,
+    formatNumber: formatAadhaarNumber
+  } = useAadhaarValidation({
+    enableRealTimeCheck: true,
+    debounceDelay: 800
+  });
+  
+  // Trigger Aadhaar validation when aadhaarNumber changes
+  useEffect(() => {
+    if (formData.aadhaarNumber && formData.aadhaarNumber.trim().length >= 12) {
+      validateAadhaar(formData.aadhaarNumber);
+    } else if (formData.aadhaarNumber.trim().length === 0) {
+      clearAadhaarValidation();
+    }
+  }, [formData.aadhaarNumber, validateAadhaar, clearAadhaarValidation]);
 
   const handleInputChange = (field: keyof DriverCreateRequest, value: string) => {
     setFormData(prev => ({
@@ -77,6 +101,10 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
         newErrors.aadhaarNumber = 'Aadhaar number is required';
       } else if (!/^\d{12}$/.test(formData.aadhaarNumber.replace(/\D/g, ''))) {
         newErrors.aadhaarNumber = 'Aadhaar number must be 12 digits';
+      } else if (aadhaarError) {
+        newErrors.aadhaarNumber = aadhaarError;
+      } else if (isAadhaarUsed) {
+        newErrors.aadhaarNumber = 'This Aadhaar card is already registered with another driver';
       }
       if (!formData.address.trim()) {
         newErrors.address = 'Address is required';
@@ -318,18 +346,65 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Aadhaar Number <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={formData.aadhaarNumber}
-              onChange={(e) => handleInputChange('aadhaarNumber', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                errors.aadhaarNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`}
-              placeholder="Enter Aadhaar number"
-              disabled={isLoading}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.aadhaarNumber}
+                onChange={(e) => {
+                  // Only allow digits and limit to 12 characters
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                  handleInputChange('aadhaarNumber', value);
+                }}
+                className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  errors.aadhaarNumber ? 'border-red-500' : 
+                  isAadhaarValid && formData.aadhaarNumber.length === 12 ? 'border-green-500' :
+                  'border-gray-300 dark:border-gray-600'
+                }`}
+                placeholder="Enter 12-digit Aadhaar number"
+                disabled={isLoading}
+                maxLength={12}
+              />
+              {/* Validation Status Icon */}
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                {isCheckingAadhaar && (
+                  <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {!isCheckingAadhaar && formData.aadhaarNumber.length === 12 && (
+                  <>
+                    {isAadhaarValid && !isAadhaarUsed && (
+                      <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    )}
+                    {(aadhaarError || isAadhaarUsed) && (
+                      <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {/* Validation Messages */}
             {errors.aadhaarNumber && (
               <p className="mt-1 text-sm text-red-500">{errors.aadhaarNumber}</p>
+            )}
+            {!errors.aadhaarNumber && isAadhaarValid && !isAadhaarUsed && formData.aadhaarNumber.length === 12 && (
+              <p className="mt-1 text-sm text-green-600">✓ Aadhaar number is valid and available</p>
+            )}
+            {existingDriver && (
+              <p className="mt-1 text-sm text-red-500">
+                This Aadhaar is already registered with {existingDriver.fullName} ({existingDriver.contactNumber})
+              </p>
+            )}
+            {formData.aadhaarNumber.length > 0 && formData.aadhaarNumber.length < 12 && (
+              <p className="mt-1 text-sm text-gray-500">
+                {12 - formData.aadhaarNumber.length} more digits required
+              </p>
             )}
           </div>
 
@@ -547,7 +622,12 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
               </div>
               <div>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Aadhaar Number:</span>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{formData.aadhaarNumber}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {formatAadhaarNumber(formData.aadhaarNumber)}
+                  {isAadhaarValid && !isAadhaarUsed && (
+                    <span className="ml-2 text-green-600">✓ Verified</span>
+                  )}
+                </p>
               </div>
               {formData.panNumber && (
                 <div>

@@ -4,7 +4,8 @@ import { useTrips } from '@/store/hooks/useTrips';
 import { useDrivers } from '@/store/hooks/useDrivers';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
-import type { TripCreateRequest, Trip, LogisticsProvider } from '@/store/api/types';
+import { isVehicleInUse, isDriverInUse } from '@/utils/vehicleInUse';
+import type { TripCreateRequest, Trip, LogisticsProvider, Vehicle, Driver } from '@/store/api/types';
 import { TripStatus } from '@/store/api/types';
 
 interface TripCreateFormProps {
@@ -38,6 +39,10 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [logisticsProviders, setLogisticsProviders] = useState<LogisticsProvider[]>([]);
+  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
+  const [vehiclesInUse, setVehiclesInUse] = useState<Set<string>>(new Set());
+  const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
+  const [driversInUse, setDriversInUse] = useState<Set<string>>(new Set());
 
   // Fetch data when component mounts
   useEffect(() => {
@@ -46,7 +51,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
         // Fetch drivers and vehicles
         await Promise.all([
           getDrivers({ isActive: true }),
-          getVehicles({ active: true })
+          getVehicles({ isActive: true })
         ]);
         
         // For now, we'll create mock logistics providers
@@ -85,6 +90,66 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     fetchData();
   }, [getDrivers, getVehicles]);
 
+  // Process vehicles when they change
+  useEffect(() => {
+    if (vehicles && vehicles.length > 0) {
+      // Filter vehicles to only show those with "assigned" or "idle" status
+      const filteredVehicles = vehicles.filter((vehicle: Vehicle) => 
+        vehicle.currentStatus === 'assigned' || vehicle.currentStatus === 'idle'
+      );
+      
+      setAvailableVehicles(filteredVehicles);
+      
+      // Check which vehicles are currently in use (in-transit status)
+      const checkVehiclesInUse = async () => {
+        const inUseChecks = await Promise.all(
+          filteredVehicles.map(async (vehicle: Vehicle) => {
+            const inUse = await isVehicleInUse(vehicle.documentId);
+            return { vehicleId: vehicle.documentId, inUse };
+          })
+        );
+        
+        const inUseSet = new Set<string>(
+          inUseChecks
+            .filter((check: { vehicleId: string; inUse: boolean }) => check.inUse)
+            .map((check: { vehicleId: string; inUse: boolean }) => check.vehicleId)
+        );
+        
+        setVehiclesInUse(inUseSet);
+      };
+      
+      checkVehiclesInUse();
+    }
+  }, [vehicles]);
+
+  // Process drivers when they change
+  useEffect(() => {
+    if (drivers && drivers.length > 0) {
+      // Set all drivers as available initially
+      setAvailableDrivers(drivers);
+      
+      // Check which drivers are currently in use (assigned to in-transit trips)
+      const checkDriversInUse = async () => {
+        const inUseChecks = await Promise.all(
+          drivers.map(async (driver: Driver) => {
+            const inUse = await isDriverInUse(driver.documentId);
+            return { driverId: driver.documentId, inUse };
+          })
+        );
+        
+        const inUseSet = new Set<string>(
+          inUseChecks
+            .filter((check: { driverId: string; inUse: boolean }) => check.inUse)
+            .map((check: { driverId: string; inUse: boolean }) => check.driverId)
+        );
+        
+        setDriversInUse(inUseSet);
+      };
+      
+      checkDriversInUse();
+    }
+  }, [drivers]);
+
   const handleInputChange = (field: keyof TripCreateRequest, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -120,6 +185,14 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     
     if (formData.totalTripDistanceInKM <= 0) {
       newErrors.totalTripDistanceInKM = 'Total Trip Distance must be greater than 0';
+    }
+    
+    if (!formData.driver) {
+      newErrors.driver = 'Driver is required';
+    }
+    
+    if (!formData.vehicle) {
+      newErrors.vehicle = 'Vehicle is required';
     }
     
     if (formData.estimatedStartTime && formData.estimatedEndTime) {
@@ -292,48 +365,86 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
         {/* Driver Selection */}
         <div>
           <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Driver
+            Driver <span className="text-red-500">*</span>
           </label>
           <select
             id="driver"
             value={formData.driver || ''}
             onChange={(e) => handleInputChange('driver', e.target.value || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.driver ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
             disabled={isLoading || driversLoading}
           >
-            <option value="">Select a driver (optional)</option>
-            {drivers.map((driver) => (
-              <option key={driver.documentId} value={driver.documentId}>
-                {driver.fullName} - {driver.contactNumber}
-              </option>
-            ))}
+            <option value="">Select a driver</option>
+            {availableDrivers.map((driver) => {
+              const isInUse = driversInUse.has(driver.documentId);
+              const isDisabled = isInUse;
+              
+              return (
+                <option 
+                  key={driver.documentId} 
+                  value={driver.documentId}
+                  disabled={isDisabled}
+                  className={isDisabled ? 'text-gray-400' : ''}
+                >
+                  {driver.fullName} - {driver.contactNumber}
+                  {isInUse ? ' - Currently on trip' : ''}
+                </option>
+              );
+            })}
           </select>
+          {errors.driver && <p className="mt-1 text-sm text-red-600">{errors.driver}</p>}
           {driversLoading && (
             <p className="mt-1 text-sm text-gray-500">Loading drivers...</p>
+          )}
+          {availableDrivers.length === 0 && !driversLoading && (
+            <p className="mt-1 text-sm text-yellow-600">
+              No available drivers found. All drivers are currently on trips.
+            </p>
           )}
         </div>
 
         {/* Vehicle Selection */}
         <div>
           <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Vehicle
+            Vehicle <span className="text-red-500">*</span>
           </label>
           <select
             id="vehicle"
             value={formData.vehicle || ''}
             onChange={(e) => handleInputChange('vehicle', e.target.value || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.vehicle ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
             disabled={isLoading || vehiclesLoading}
           >
-            <option value="">Select a vehicle (optional)</option>
-            {vehicles.map((vehicle) => (
-              <option key={vehicle.documentId} value={vehicle.documentId}>
-                {vehicle.vehicleNumber} - {vehicle.model} ({vehicle.type})
-              </option>
-            ))}
+            <option value="">Select a vehicle</option>
+            {availableVehicles.map((vehicle) => {
+              const isInUse = vehiclesInUse.has(vehicle.documentId);
+              const isDisabled = isInUse;
+              
+              return (
+                <option 
+                  key={vehicle.documentId} 
+                  value={vehicle.documentId}
+                  disabled={isDisabled}
+                  className={isDisabled ? 'text-gray-400' : ''}
+                >
+                  {vehicle.vehicleNumber} - {vehicle.model} ({vehicle.type}) 
+                  {isInUse ? ' - Currently in use' : ` - ${vehicle.currentStatus}`}
+                </option>
+              );
+            })}
           </select>
+          {errors.vehicle && <p className="mt-1 text-sm text-red-600">{errors.vehicle}</p>}
           {vehiclesLoading && (
             <p className="mt-1 text-sm text-gray-500">Loading vehicles...</p>
+          )}
+          {availableVehicles.length === 0 && !vehiclesLoading && (
+            <p className="mt-1 text-sm text-yellow-600">
+              No available vehicles found. Only vehicles with &quot;assigned&quot; or &quot;idle&quot; status are available for trips.
+            </p>
           )}
         </div>
 
