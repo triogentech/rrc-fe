@@ -330,13 +330,13 @@ const AppSidebar: React.FC = () => {
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <div className="text-center">
-                <span className="text-2xl font-bold text-gray-800 dark:text-white">RCC Trips</span>
+                <span className="text-2xl font-bold text-gray-800 dark:text-white">RRC Trips</span>
                 <div className="w-16 h-1 bg-brand-500 mx-auto rounded-full mt-2"></div>
               </div>
             </>
           ) : (
             <div className="text-center">
-              <span className="text-2xl font-bold text-gray-800 dark:text-white">RCC Trips</span>
+              <span className="text-2xl font-bold text-gray-800 dark:text-white">RRC Trips</span>
               <div className="w-16 h-1 bg-brand-500 mx-auto rounded-full mt-2"></div>
             </div>
           )}

@@ -23,7 +23,7 @@ export default function AuthLayout({
                 <Link href="/" className="block mb-6 group">
                   <div className="text-center">
                     <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
-                      RCC Trips
+                      RRC Trips
                     </h1>
                     <div className="w-16 h-1 bg-brand-500 mx-auto rounded-full group-hover:w-20 transition-all duration-300"></div>
                   </div>
