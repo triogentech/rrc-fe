@@ -38,18 +38,29 @@ export const getVehiclesInUse = async (params?: {
  */
 export const getVehicleInUseById = async (vehicleId: string): Promise<Vehicle | null> => {
   try {
-    const queryParams = {
-      'filters[documentId][$eq]': vehicleId,
-      'filters[currentStatus][$eq]': 'in-transit',
+    // First check if vehicle has any active trips (created or in-transit)
+    const tripQueryParams = {
+      'filters[vehicle][$eq]': vehicleId,
+      'filters[currentStatus][$in]': ['created', 'in-transit'],
       populate: '*',
     };
 
-    console.log('Fetching vehicle in use by ID:', vehicleId);
+    console.log('Checking if vehicle has active trips:', vehicleId);
     
-    const response = await api.get<StrapiResponse<Vehicle>>('/api/vehicles', queryParams);
+    const tripResponse = await api.get<StrapiResponse<Trip>>('/api/trips', tripQueryParams);
     
-    if (response.data && response.data.data && response.data.data.length > 0) {
-      return response.data.data[0];
+    if (tripResponse.data && tripResponse.data.data && tripResponse.data.data.length > 0) {
+      // Vehicle has active trips, now get the vehicle details
+      const vehicleQueryParams = {
+        'filters[documentId][$eq]': vehicleId,
+        populate: '*',
+      };
+
+      const vehicleResponse = await api.get<StrapiResponse<Vehicle>>('/api/vehicles', vehicleQueryParams);
+      
+      if (vehicleResponse.data && vehicleResponse.data.data && vehicleResponse.data.data.length > 0) {
+        return vehicleResponse.data.data[0];
+      }
     }
     
     return null;
@@ -196,7 +207,7 @@ export const getDriverInUseById = async (driverId: string): Promise<Trip | null>
   try {
     const queryParams = {
       'filters[driver][$eq]': driverId,
-      'filters[currentStatus][$eq]': 'in-transit',
+      'filters[currentStatus][$in]': ['created', 'in-transit'], // Check for both created and in-transit trips
       populate: '*',
     };
 

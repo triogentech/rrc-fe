@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState,useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -32,7 +32,12 @@ const navItems: NavItem[] = [
   {
     icon: <PaperPlaneIcon />,
     name: "Trips",
-    path: "/trips",
+    path: "/trips?status=in-transit",
+    subItems: [
+      { name: "Created", path: "/trips?status=created" },
+      { name: "In Transit", path: "/trips?status=in-transit" },
+      { name: "Completed", path: "/trips?status=completed" },
+    ],
   },
   {
     icon: <GroupIcon />,
@@ -115,6 +120,8 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const { logout } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -124,52 +131,58 @@ const AppSidebar: React.FC = () => {
       {navItems.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
-            <button
-              onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group  ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
-              }`}
-            >
-              <span
-                className={` ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }`}
-              >
-                {nav.icon}
-              </span>
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <span className={`menu-item-text`}>{nav.name}</span>
-              )}
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={`ml-auto w-5 h-5 transition-transform duration-200  ${
-                    openSubmenu?.type === menuType &&
-                    openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
-                  }`}
-                />
-              )}
-            </button>
+             <button
+               onClick={() => handleSubmenuToggle(index, menuType)}
+               className={`menu-item group  ${
+                 (openSubmenu?.type === menuType && openSubmenu?.index === index) || 
+                 isAnySubmenuItemActive(nav.subItems) ||
+                 (nav.path && isActive(nav.path))
+                   ? "menu-item-active"
+                   : "menu-item-inactive"
+               } cursor-pointer ${
+                 !isExpanded && !isHovered
+                   ? "lg:justify-center"
+                   : "lg:justify-start"
+               }`}
+             >
+               <span
+                 className={` ${
+                   (openSubmenu?.type === menuType && openSubmenu?.index === index) || 
+                   isAnySubmenuItemActive(nav.subItems) ||
+                   (nav.path && isActive(nav.path))
+                     ? "menu-item-icon-active"
+                     : "menu-item-icon-inactive"
+                 }`}
+               >
+                 {nav.icon}
+               </span>
+               {(isExpanded || isHovered || isMobileOpen) && (
+                 <span className={`menu-item-text`}>{nav.name}</span>
+               )}
+               {(isExpanded || isHovered || isMobileOpen) && (
+                 <ChevronDownIcon
+                   className={`ml-auto w-5 h-5 transition-transform duration-200  ${
+                     openSubmenu?.type === menuType &&
+                     openSubmenu?.index === index
+                       ? "rotate-180 text-brand-500"
+                       : ""
+                   }`}
+                 />
+               )}
+             </button>
           ) : (
             nav.path && (
               <Link
                 href={nav.path}
                 className={`menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+                  isActive(nav.path) || isAnySubmenuItemActive(nav.subItems)
+                    ? "menu-item-active" 
+                    : "menu-item-inactive"
                 }`}
               >
                 <span
                   className={`${
-                    isActive(nav.path)
+                    isActive(nav.path) || isAnySubmenuItemActive(nav.subItems)
                       ? "menu-item-icon-active"
                       : "menu-item-icon-inactive"
                   }`}
@@ -246,13 +259,45 @@ const AppSidebar: React.FC = () => {
     type: "main" | "others";
     index: number;
   } | null>(null);
+
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // const isActive = (path: string) => path === pathname;
-   const isActive = useCallback((path: string) => path === pathname, [pathname]);
+   const isActive = useCallback((path: string) => {
+     // Handle query parameters by comparing the base path and query params
+     const [basePath, queryString] = path.split('?');
+     const currentQueryString = searchParams.toString();
+     
+     // If the base paths match
+     if (basePath === pathname) {
+       // If the submenu item has query params, check if they match
+       if (queryString) {
+         const queryParams = new URLSearchParams(queryString);
+         
+         // Check if all query params in the submenu item match the current URL
+         for (const [key, value] of queryParams.entries()) {
+           if (searchParams.get(key) !== value) {
+             return false;
+           }
+         }
+         return true;
+       } else {
+         // If submenu item has no query params, it should match when current URL also has no query params
+         return !currentQueryString;
+       }
+     }
+     
+     return false;
+   }, [pathname, searchParams]);
+
+   // Helper function to check if any submenu item is active
+   const isAnySubmenuItemActive = useCallback((subItems: { name: string; path: string; pro?: boolean; new?: boolean }[] | undefined) => {
+     if (!subItems || !Array.isArray(subItems)) return false;
+     return subItems.some(subItem => isActive(subItem.path));
+   }, [isActive]);
 
   useEffect(() => {
     // Check if the current path matches any submenu item
@@ -271,6 +316,14 @@ const AppSidebar: React.FC = () => {
             }
           });
         }
+        // Also check if the main menu item itself is active and has submenu (for cases like /trips?status=in-transit)
+        if (nav.subItems && nav.path && isActive(nav.path)) {
+          setOpenSubmenu({
+            type: menuType as "main" | "others",
+            index,
+          });
+          submenuMatched = true;
+        }
       });
     });
 
@@ -278,7 +331,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [pathname,isActive]);
+  }, [pathname, searchParams, isActive]);
 
   useEffect(() => {
     // Set the height of the submenu items when the submenu is opened
@@ -294,15 +347,24 @@ const AppSidebar: React.FC = () => {
   }, [openSubmenu]);
 
   const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+    const items = menuType === "main" ? navItems : [];
+    const nav = items[index];
+    
+    // If this is the Trips menu and it has a default path, navigate to it
+    if (nav && nav.name === "Trips" && nav.path) {
+      router.push(nav.path);
+      // Always open the submenu when navigating to Trips
+      setOpenSubmenu({ type: menuType, index });
+      return;
+    }
+    
+    // For other menus, use the normal toggle logic
     setOpenSubmenu((prevOpenSubmenu) => {
-      if (
+      return (
         prevOpenSubmenu &&
         prevOpenSubmenu.type === menuType &&
         prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
+      ) ? null : { type: menuType, index };
     });
   };
 

@@ -4,8 +4,7 @@ import { useTrips } from '@/store/hooks/useTrips';
 import { useDrivers } from '@/store/hooks/useDrivers';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
-import { isVehicleInUse, isDriverInUse } from '@/utils/vehicleInUse';
-import type { TripCreateRequest, Trip, LogisticsProvider, Vehicle, Driver } from '@/store/api/types';
+import type { TripCreateRequest, Trip, Vehicle, Driver } from '@/store/api/types';
 import { TripStatus } from '@/store/api/types';
 
 interface TripCreateFormProps {
@@ -26,19 +25,15 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     startPoint: '',
     endPoint: '',
     totalTripDistanceInKM: 0,
-    startPointCoords: null,
-    endPointCoords: null,
     currentStatus: 'created' as TripStatus,
     driver: undefined,
     vehicle: undefined,
-    logisticsProvider: undefined,
     // Custom fields
     cstmCreatedBy: user?.documentId || user?.id || '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [logisticsProviders, setLogisticsProviders] = useState<LogisticsProvider[]>([]);
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
   const [vehiclesInUse, setVehiclesInUse] = useState<Set<string>>(new Set());
   const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
@@ -50,37 +45,8 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       try {
         // Fetch drivers and vehicles
         await Promise.all([
-          getDrivers({ isActive: true }),
-          getVehicles({ isActive: true })
-        ]);
-        
-        // For now, we'll create mock logistics providers
-        // In a real app, you'd fetch these from an API
-        setLogisticsProviders([
-          {
-            id: '1',
-            documentId: 'lp1',
-            name: 'ABC Logistics',
-            contactNumber: '+1234567890',
-            email: 'contact@abclogistics.com',
-            address: '123 Main St, City, State',
-            isActive: true,
-            publishedAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            documentId: 'lp2',
-            name: 'XYZ Transport',
-            contactNumber: '+0987654321',
-            email: 'info@xyztransport.com',
-            address: '456 Oak Ave, City, State',
-            isActive: true,
-            publishedAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
+          getDrivers(),
+          getVehicles()
         ]);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -93,15 +59,17 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   // Process vehicles when they change
   useEffect(() => {
     if (vehicles && vehicles.length > 0) {
-      // Filter vehicles to only show those with "assigned" or "idle" status
+      // Filter vehicles to only show active ones with "assigned" or "idle" status
       const filteredVehicles = vehicles.filter((vehicle: Vehicle) => 
-        vehicle.currentStatus === 'assigned' || vehicle.currentStatus === 'idle'
+        vehicle.isActive !== false && 
+        (vehicle.currentStatus === 'assigned' || vehicle.currentStatus === 'idle')
       );
       
       setAvailableVehicles(filteredVehicles);
       
-      // Check which vehicles are currently in use (in-transit status)
+      // Check which vehicles are currently in use by making API calls
       const checkVehiclesInUse = async () => {
+        const { isVehicleInUse } = await import('@/utils/vehicleInUse');
         const inUseChecks = await Promise.all(
           filteredVehicles.map(async (vehicle: Vehicle) => {
             const inUse = await isVehicleInUse(vehicle.documentId);
@@ -125,28 +93,27 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   // Process drivers when they change
   useEffect(() => {
     if (drivers && drivers.length > 0) {
-      // Set all drivers as available initially
-      setAvailableDrivers(drivers);
+      // Filter drivers to only show active ones (isActive !== false)
+      const activeDrivers = drivers.filter((driver: Driver) => driver.isActive !== false);
       
-      // Check which drivers are currently in use (assigned to in-transit trips)
-      const checkDriversInUse = async () => {
-        const inUseChecks = await Promise.all(
-          drivers.map(async (driver: Driver) => {
-            const inUse = await isDriverInUse(driver.documentId);
-            return { driverId: driver.documentId, inUse };
-          })
-        );
-        
-        const inUseSet = new Set<string>(
-          inUseChecks
-            .filter((check: { driverId: string; inUse: boolean }) => check.inUse)
-            .map((check: { driverId: string; inUse: boolean }) => check.driverId)
-        );
-        
-        setDriversInUse(inUseSet);
-      };
+      // Check which drivers are currently in use by looking at their trips
+      const driversInUseSet = new Set<string>();
       
-      checkDriversInUse();
+      activeDrivers.forEach((driver: Driver) => {
+        if (driver.trips && Array.isArray(driver.trips)) {
+          // Check if driver has any active trips (created or in-transit)
+          const hasActiveTrips = driver.trips.some((trip: Trip) => 
+            trip.currentStatus === 'created' || trip.currentStatus === 'in-transit'
+          );
+          
+          if (hasActiveTrips) {
+            driversInUseSet.add(driver.documentId);
+          }
+        }
+      });
+      
+      setAvailableDrivers(activeDrivers);
+      setDriversInUse(driversInUseSet);
     }
   }, [drivers]);
 
@@ -224,11 +191,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }
   };
 
-  const tripStatusOptions: { value: TripStatus; label: string }[] = [
-    { value: TripStatus.CREATED, label: 'Created' },
-    { value: TripStatus.IN_TRANSIT, label: 'In Transit' },
-    { value: TripStatus.COMPLETED, label: 'Completed' },
-  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -256,26 +218,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           {errors.tripNumber && <p className="mt-1 text-sm text-red-600">{errors.tripNumber}</p>}
         </div>
 
-        {/* Current Status */}
-        <div>
-          <label htmlFor="currentStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Status *
-          </label>
-          <select
-            id="currentStatus"
-            value={formData.currentStatus}
-            onChange={(e) => handleInputChange('currentStatus', e.target.value as TripStatus)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            disabled={isLoading}
-          >
-            {tripStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {errors.currentStatus && <p className="mt-1 text-sm text-red-600">{errors.currentStatus}</p>}
-        </div>
 
         {/* Estimated Start Time */}
         <div>
@@ -448,58 +390,8 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           )}
         </div>
 
-        {/* Logistics Provider Selection */}
-        <div>
-          <label htmlFor="logisticsProvider" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Logistics Provider
-          </label>
-          <select
-            id="logisticsProvider"
-            value={formData.logisticsProvider || ''}
-            onChange={(e) => handleInputChange('logisticsProvider', e.target.value || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            disabled={isLoading}
-          >
-            <option value="">Select a logistics provider (optional)</option>
-            {logisticsProviders.map((provider) => (
-              <option key={provider.documentId} value={provider.documentId}>
-                {provider.name} - {provider.contactNumber}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        {/* Start Point Coordinates */}
-        <div>
-          <label htmlFor="startPointCoords" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Start Point Coordinates (Optional)
-          </label>
-          <input
-            type="text"
-            id="startPointCoords"
-            value={formData.startPointCoords || ''}
-            onChange={(e) => handleInputChange('startPointCoords', e.target.value || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            placeholder="e.g., 40.7128,-74.0060"
-            disabled={isLoading}
-          />
-        </div>
 
-        {/* End Point Coordinates */}
-        <div>
-          <label htmlFor="endPointCoords" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            End Point Coordinates (Optional)
-          </label>
-          <input
-            type="text"
-            id="endPointCoords"
-            value={formData.endPointCoords || ''}
-            onChange={(e) => handleInputChange('endPointCoords', e.target.value || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            placeholder="e.g., 34.0522,-118.2437"
-            disabled={isLoading}
-          />
-        </div>
       </div>
 
       <div className="flex justify-end space-x-3 mt-6">
