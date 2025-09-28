@@ -315,7 +315,10 @@ const TripsPage = () => {
                 Distance (KM)
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Route
+                From
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                To
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Logistics Provider
@@ -415,11 +418,17 @@ const TripsPage = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.startPoint && trip.endPoint ? (
-                      <div>
-                        <div className="font-medium">{trip.startPoint}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">→ {trip.endPoint}</div>
-                      </div>
+                    {trip.startPoint ? (
+                      <div className="font-medium">{trip.startPoint}</div>
+                    ) : (
+                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    {trip.endPoint ? (
+                      <div className="font-medium">{trip.endPoint}</div>
                     ) : (
                       <span className="text-gray-500 dark:text-gray-400">N/A</span>
                     )}
