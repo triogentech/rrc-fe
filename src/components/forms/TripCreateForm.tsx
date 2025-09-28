@@ -5,7 +5,7 @@ import { useDrivers } from '@/store/hooks/useDrivers';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { TripCreateRequest, Trip, Vehicle, Driver } from '@/store/api/types';
-import { TripStatus } from '@/store/api/types';
+import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 
 interface TripCreateFormProps {
   onSuccess: (trip: Trip) => void;
@@ -15,7 +15,7 @@ interface TripCreateFormProps {
 export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormProps) {
   const { createTrip, isLoading, error: apiError, clearTripsError } = useTrips();
   const { drivers, getDrivers, isLoading: driversLoading } = useDrivers();
-  const { vehicles, getVehicles, isLoading: vehiclesLoading } = useVehicles();
+  const { vehicles, getVehicles, isLoading: vehiclesLoading, updateVehicle } = useVehicles();
   const { user } = useReduxAuth();
 
   const [formData, setFormData] = useState<TripCreateRequest>({
@@ -183,6 +183,19 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     try {
       const newTrip = await createTrip(formData);
       if (newTrip) {
+        // Update vehicle status to "assigned" after successful trip creation
+        if (formData.vehicle) {
+          try {
+            await updateVehicle(formData.vehicle, {
+              currentStatus: VehicleCurrentStatus.ASSIGNED,
+            });
+            console.log('Vehicle status updated to assigned successfully');
+          } catch (vehicleError) {
+            console.error('Error updating vehicle status:', vehicleError);
+            // Don't throw here, as trip was already created successfully
+          }
+        }
+        
         onSuccess(newTrip);
       }
     } catch (err) {

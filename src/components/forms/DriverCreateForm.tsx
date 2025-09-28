@@ -90,12 +90,16 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
       if (!formData.contactNumber.trim()) {
         newErrors.contactNumber = 'Contact number is required';
       } else if (!/^\d{10}$/.test(formData.contactNumber.replace(/\D/g, ''))) {
-        newErrors.contactNumber = 'Contact number must be 10 digits';
+        newErrors.contactNumber = 'Contact number must be exactly 10 digits';
+      } else if (!/^[6-9]\d{9}$/.test(formData.contactNumber.replace(/\D/g, ''))) {
+        newErrors.contactNumber = 'Contact number must start with 6, 7, 8, or 9';
       }
       if (!formData.emgContactNumber.trim()) {
         newErrors.emgContactNumber = 'Emergency contact number is required';
       } else if (!/^\d{10}$/.test(formData.emgContactNumber.replace(/\D/g, ''))) {
-        newErrors.emgContactNumber = 'Emergency contact number must be 10 digits';
+        newErrors.emgContactNumber = 'Emergency contact number must be exactly 10 digits';
+      } else if (!/^[6-9]\d{9}$/.test(formData.emgContactNumber.replace(/\D/g, ''))) {
+        newErrors.emgContactNumber = 'Emergency contact number must start with 6, 7, 8, or 9';
       }
       if (!formData.aadhaarNumber.trim()) {
         newErrors.aadhaarNumber = 'Aadhaar number is required';
@@ -241,13 +245,21 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
             <input
               type="tel"
               value={formData.contactNumber}
-              onChange={(e) => handleInputChange('contactNumber', e.target.value)}
+              onChange={(e) => {
+                // Only allow digits and limit to 10 characters
+                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                handleInputChange('contactNumber', value);
+              }}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.contactNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
-              placeholder="Enter contact number"
+              placeholder="Enter 10-digit contact number"
               disabled={isLoading}
+              maxLength={10}
             />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Must start with 6, 7, 8, or 9
+            </p>
             {errors.contactNumber && (
               <p className="mt-1 text-sm text-red-500">{errors.contactNumber}</p>
             )}
@@ -261,13 +273,21 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
             <input
               type="tel"
               value={formData.emgContactNumber}
-              onChange={(e) => handleInputChange('emgContactNumber', e.target.value)}
+              onChange={(e) => {
+                // Only allow digits and limit to 10 characters
+                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                handleInputChange('emgContactNumber', value);
+              }}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.emgContactNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
-              placeholder="Enter emergency contact number"
+              placeholder="Enter 10-digit emergency contact number"
               disabled={isLoading}
+              maxLength={10}
             />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Must start with 6, 7, 8, or 9
+            </p>
             {errors.emgContactNumber && (
               <p className="mt-1 text-sm text-red-500">{errors.emgContactNumber}</p>
             )}
@@ -311,35 +331,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
 
         {/* Right Column */}
         <div className="space-y-4">
-          {/* Country Dial Code */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Country Dial Code <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.countryDialCode}
-              onChange={(e) => handleInputChange('countryDialCode', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              placeholder="+91"
-              disabled={isLoading}
-            />
-          </div>
 
-          {/* Emergency Country Dial Code */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Emergency Country Dial Code <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.emgCountryDialCode}
-              onChange={(e) => handleInputChange('emgCountryDialCode', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              placeholder="+91"
-              disabled={isLoading}
-            />
-          </div>
 
           {/* Aadhaar Number */}
           <div>
@@ -611,13 +603,13 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
               <div>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Contact:</span>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formData.countryDialCode} {formData.contactNumber}
+                  +91 {formData.contactNumber}
                 </p>
               </div>
               <div>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Emergency Contact:</span>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formData.emgCountryDialCode} {formData.emgContactNumber}
+                  +91 {formData.emgContactNumber}
                 </p>
               </div>
               <div>

@@ -447,7 +447,10 @@ const TripsPage = () => {
                   <select
                     value={trip.currentStatus}
                     onChange={(e) => handleStatusChange(trip, e.target.value as TripStatus)}
-                    className={`text-xs font-semibold rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500 ${getTripStatusColor(trip.currentStatus)}`}
+                    disabled={trip.currentStatus === 'completed'}
+                    className={`text-xs font-semibold rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500 ${getTripStatusColor(trip.currentStatus)} ${
+                      trip.currentStatus === 'completed' ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
                   >
                     <option value="created">Created</option>
                     <option value="in-transit">In Transit</option>

@@ -50,9 +50,6 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
       if (!formData.fullName.trim()) {
         newErrors.fullName = 'Full name is required';
       }
-      if (!formData.countryDialCode.trim()) {
-        newErrors.countryDialCode = 'Country dial code is required';
-      }
       if (!formData.contactNumber.trim()) {
         newErrors.contactNumber = 'Contact number is required';
       } else if (!/^\d{10}$/.test(formData.contactNumber)) {
@@ -96,10 +93,6 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
 
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Full name is required';
-    }
-
-    if (!formData.countryDialCode.trim()) {
-      newErrors.countryDialCode = 'Country dial code is required';
     }
 
     if (!formData.contactNumber.trim()) {
@@ -174,38 +167,9 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
           )}
         </div>
 
-        {/* Country Dial Code */}
-        <div>
-          <label htmlFor="countryDialCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Country Dial Code *
-          </label>
-          <select
-            id="countryDialCode"
-            value={formData.countryDialCode}
-            onChange={(e) => handleInputChange('countryDialCode', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-              errors.countryDialCode
-                ? 'border-red-500 dark:border-red-400'
-                : 'border-gray-300 dark:border-gray-600'
-            }`}
-            disabled={isLoading}
-          >
-            <option value="+91">+91 (India)</option>
-            <option value="+1">+1 (USA)</option>
-            <option value="+44">+44 (UK)</option>
-            <option value="+86">+86 (China)</option>
-            <option value="+81">+81 (Japan)</option>
-            <option value="+49">+49 (Germany)</option>
-            <option value="+33">+33 (France)</option>
-            <option value="+61">+61 (Australia)</option>
-          </select>
-          {errors.countryDialCode && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.countryDialCode}</p>
-          )}
-        </div>
 
         {/* Contact Number */}
-        <div className="md:col-span-2">
+        <div>
           <label htmlFor="contactNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Contact Number *
           </label>

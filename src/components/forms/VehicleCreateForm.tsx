@@ -173,36 +173,6 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
           </select>
         </div>
 
-        {/* Active Status */}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Active Status
-          </label>
-          <div className="flex items-center space-x-3">
-            <span className={`text-sm font-medium ${!formData.active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-              Inactive
-            </span>
-            <button
-              type="button"
-              onClick={() => handleInputChange('active', !formData.active)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                formData.active 
-                  ? 'bg-blue-600' 
-                  : 'bg-gray-200 dark:bg-gray-700'
-              } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              disabled={isLoading}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  formData.active ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className={`text-sm font-medium ${formData.active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-              Active
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Form Actions */}
