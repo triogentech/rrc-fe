@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
       { name: "Created", path: "/trips?status=created" },
       { name: "In Transit", path: "/trips?status=in-transit" },
       { name: "Completed", path: "/trips?status=completed" },
+      { name: "Idle Vehicles", path: "/trips/idle-vehicles" },
     ],
   },
   {

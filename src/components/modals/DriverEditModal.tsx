@@ -32,6 +32,13 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
     emergencyContactName: '',
     emergencyContactRelation: '',
     isActive: true,
+    // New banking and license fields
+    drivingLicenceNumber: '',
+    accountHolderName: '',
+    accountNumber: '',
+    branchName: '',
+    ifscCode: '',
+    accountType: '',
     // Custom fields
     cstmCreatedBy: '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -59,6 +66,13 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
         emergencyContactName: driver.emergencyContactName || '',
         emergencyContactRelation: driver.emergencyContactRelation || '',
         isActive: driver.isActive ?? true,
+        // New banking and license fields
+        drivingLicenceNumber: driver.drivingLicenceNumber || '',
+        accountHolderName: driver.accountHolderName || '',
+        accountNumber: driver.accountNumber || '',
+        branchName: driver.branchName || '',
+        ifscCode: driver.ifscCode || '',
+        accountType: driver.accountType || '',
         // Custom fields
         cstmCreatedBy: typeof driver.cstmCreatedBy === 'string' ? driver.cstmCreatedBy : driver.cstmCreatedBy?.documentId || '',
         cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -118,6 +132,19 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
 
     if (!formData.address?.trim()) {
       newErrors.address = 'Address is required';
+    }
+
+    // New field validations
+    if (formData.drivingLicenceNumber && !formData.drivingLicenceNumber.trim()) {
+      newErrors.drivingLicenceNumber = 'Driving license number is required';
+    }
+
+    if (formData.accountNumber && !formData.accountNumber.trim()) {
+      newErrors.accountNumber = 'Account number is required';
+    }
+
+    if (formData.ifscCode && !formData.ifscCode.trim()) {
+      newErrors.ifscCode = 'IFSC code is required';
     }
 
     // Additional validation
@@ -186,6 +213,25 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
       }
       if (formData.emergencyContactRelation?.trim()) {
         cleanedData.emergencyContactRelation = formData.emergencyContactRelation.trim();
+      }
+      // New banking and license fields
+      if (formData.drivingLicenceNumber?.trim()) {
+        cleanedData.drivingLicenceNumber = formData.drivingLicenceNumber.trim();
+      }
+      if (formData.accountHolderName?.trim()) {
+        cleanedData.accountHolderName = formData.accountHolderName.trim();
+      }
+      if (formData.accountNumber?.trim()) {
+        cleanedData.accountNumber = formData.accountNumber.trim();
+      }
+      if (formData.branchName?.trim()) {
+        cleanedData.branchName = formData.branchName.trim();
+      }
+      if (formData.ifscCode?.trim()) {
+        cleanedData.ifscCode = formData.ifscCode.trim();
+      }
+      if (formData.accountType?.trim()) {
+        cleanedData.accountType = formData.accountType.trim();
       }
 
       console.log('Updating driver data:', cleanedData);
@@ -333,6 +379,108 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+
+                  {/* Driving License Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Driving License Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.drivingLicenceNumber}
+                      onChange={(e) => handleInputChange('drivingLicenceNumber', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                        errors.drivingLicenceNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                      placeholder="Enter driving license number"
+                    />
+                    {errors.drivingLicenceNumber && (
+                      <p className="mt-1 text-sm text-red-500">{errors.drivingLicenceNumber}</p>
+                    )}
+                  </div>
+
+                  {/* Account Holder Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.accountHolderName}
+                      onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Enter account holder name"
+                    />
+                  </div>
+
+                  {/* Account Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.accountNumber}
+                      onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                        errors.accountNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                      placeholder="Enter account number"
+                    />
+                    {errors.accountNumber && (
+                      <p className="mt-1 text-sm text-red-500">{errors.accountNumber}</p>
+                    )}
+                  </div>
+
+                  {/* Branch Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Branch Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.branchName}
+                      onChange={(e) => handleInputChange('branchName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Enter branch name"
+                    />
+                  </div>
+
+                  {/* IFSC Code */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.ifscCode}
+                      onChange={(e) => handleInputChange('ifscCode', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                        errors.ifscCode ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                      placeholder="Enter IFSC code"
+                    />
+                    {errors.ifscCode && (
+                      <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>
+                    )}
+                  </div>
+
+                  {/* Account Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Account Type
+                    </label>
+                    <select
+                      value={formData.accountType}
+                      onChange={(e) => handleInputChange('accountType', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="">Select account type</option>
+                      <option value="savings">Savings</option>
+                      <option value="current">Current</option>
+                      <option value="salary">Salary</option>
                     </select>
                   </div>
                 </div>

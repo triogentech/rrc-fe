@@ -21,6 +21,11 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
     type: vehicle.type,
     currentStatus: vehicle.currentStatus,
     isActive: vehicle.isActive ?? true, // Use isActive and default to true if null
+    // New mandatory fields
+    odometerReading: vehicle.odometerReading || '',
+    engineNumber: vehicle.engineNumber || '',
+    chassisNumber: vehicle.chassisNumber || '',
+    typeOfVehicleAxle: vehicle.typeOfVehicleAxle || '',
     // Custom fields
     cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -36,6 +41,11 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
       type: vehicle.type,
       currentStatus: vehicle.currentStatus,
       isActive: vehicle.isActive ?? true, // Use isActive and default to true if null
+      // New mandatory fields
+      odometerReading: vehicle.odometerReading || '',
+      engineNumber: vehicle.engineNumber || '',
+      chassisNumber: vehicle.chassisNumber || '',
+      typeOfVehicleAxle: vehicle.typeOfVehicleAxle || '',
       // Custom fields
       cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
       cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -68,6 +78,22 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
       newErrors.model = 'Model is required';
     }
 
+    if (!formData.odometerReading?.trim()) {
+      newErrors.odometerReading = 'Odometer reading is required';
+    }
+
+    if (!formData.engineNumber?.trim()) {
+      newErrors.engineNumber = 'Engine number is required';
+    }
+
+    if (!formData.chassisNumber?.trim()) {
+      newErrors.chassisNumber = 'Chassis number is required';
+    }
+
+    if (!formData.typeOfVehicleAxle?.trim()) {
+      newErrors.typeOfVehicleAxle = 'Type of vehicle axle is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,6 +113,11 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
         type: formData.type,
         currentStatus: formData.currentStatus,
         isActive: formData.isActive, // Include isActive in the request
+        // New mandatory fields
+        odometerReading: formData.odometerReading?.trim(),
+        engineNumber: formData.engineNumber?.trim(),
+        chassisNumber: formData.chassisNumber?.trim(),
+        typeOfVehicleAxle: formData.typeOfVehicleAxle?.trim(),
         // Custom fields
         cstmUpdatedBy: formData.cstmUpdatedBy,
       };
@@ -217,6 +248,92 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
               Active
             </span>
           </div>
+        </div>
+
+        {/* Odometer Reading */}
+        <div>
+          <label htmlFor="odometerReading" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Odometer Reading <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="odometerReading"
+            value={formData.odometerReading || ''}
+            onChange={(e) => handleInputChange('odometerReading', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
+              errors.odometerReading ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="Enter odometer reading"
+            disabled={isLoading}
+          />
+          {errors.odometerReading && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.odometerReading}</p>
+          )}
+        </div>
+
+        {/* Engine Number */}
+        <div>
+          <label htmlFor="engineNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Engine Number <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="engineNumber"
+            value={formData.engineNumber || ''}
+            onChange={(e) => handleInputChange('engineNumber', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
+              errors.engineNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="Enter engine number"
+            disabled={isLoading}
+          />
+          {errors.engineNumber && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.engineNumber}</p>
+          )}
+        </div>
+
+        {/* Chassis Number */}
+        <div>
+          <label htmlFor="chassisNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Chassis Number <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="chassisNumber"
+            value={formData.chassisNumber || ''}
+            onChange={(e) => handleInputChange('chassisNumber', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
+              errors.chassisNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="Enter chassis number"
+            disabled={isLoading}
+          />
+          {errors.chassisNumber && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.chassisNumber}</p>
+          )}
+        </div>
+
+        {/* Type of Vehicle Axle */}
+        <div>
+          <label htmlFor="typeOfVehicleAxle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Type of Vehicle Axle <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="typeOfVehicleAxle"
+            value={formData.typeOfVehicleAxle || ''}
+            onChange={(e) => handleInputChange('typeOfVehicleAxle', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.typeOfVehicleAxle ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            disabled={isLoading}
+          >
+            <option value="">Select axle type</option>
+            <option value="single">Single</option>
+            <option value="multi">Multi</option>
+          </select>
+          {errors.typeOfVehicleAxle && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.typeOfVehicleAxle}</p>
+          )}
         </div>
       </div>
 

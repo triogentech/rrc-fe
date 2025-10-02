@@ -319,223 +319,223 @@ const TripsPage = () => {
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 To
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Logistics Provider
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Actual End Time
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Created By
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Updated By
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Logistics Provider
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actual End Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Created By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Updated By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {filteredTrips.map((trip) => (
-              <tr key={trip.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {trip.tripNumber}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.driver ? (
-                      typeof trip.driver === 'string' ? (
-                        <span className="text-gray-500 dark:text-gray-400">Loading...</span>
-                      ) : (
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
-                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                              {trip.driver.fullName.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium">{trip.driver.fullName}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {trip.driver.countryDialCode} {trip.driver.contactNumber}
+                <tr key={trip.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {trip.tripNumber}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.driver ? (
+                        typeof trip.driver === 'string' ? (
+                          <span className="text-gray-500 dark:text-gray-400">Loading...</span>
+                        ) : (
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                {trip.driver.fullName.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="font-medium">{trip.driver.fullName}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {trip.driver.countryDialCode} {trip.driver.contactNumber}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">No driver assigned</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.vehicle ? (
-                      typeof trip.vehicle === 'string' ? (
-                        <span className="text-gray-500 dark:text-gray-400">Loading...</span>
+                        )
                       ) : (
-                        <div>
-                          <div className="font-medium">{trip.vehicle.vehicleNumber}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {trip.vehicle.model} • {trip.vehicle.type}
+                        <span className="text-gray-500 dark:text-gray-400">No driver assigned</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.vehicle ? (
+                        typeof trip.vehicle === 'string' ? (
+                          <span className="text-gray-500 dark:text-gray-400">Loading...</span>
+                        ) : (
+                          <div>
+                            <div className="font-medium">{trip.vehicle.vehicleNumber}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {trip.vehicle.model} • {trip.vehicle.type}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Status: <span className={`font-medium ${trip.vehicle.currentStatus === 'idle' ? 'text-green-600' : trip.vehicle.currentStatus === 'assigned' ? 'text-yellow-600' : 'text-red-600'}`}>
+                                {trip.vehicle.currentStatus}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Status: <span className={`font-medium ${trip.vehicle.currentStatus === 'idle' ? 'text-green-600' : trip.vehicle.currentStatus === 'assigned' ? 'text-yellow-600' : 'text-red-600'}`}>
-                              {trip.vehicle.currentStatus}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">No vehicle assigned</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {formatTripDate(trip.estimatedStartTime)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {formatTripDate(trip.estimatedEndTime)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {getTripDuration(trip)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
+                        )
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">No vehicle assigned</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {formatTripDate(trip.estimatedStartTime)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {formatTripDate(trip.estimatedEndTime)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {getTripDuration(trip)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
                     {trip.startPoint ? (
-                      <div className="font-medium">{trip.startPoint}</div>
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
+                          <div className="font-medium">{trip.startPoint}</div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
                     {trip.endPoint ? (
                       <div className="font-medium">{trip.endPoint}</div>
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.logisticsProvider ? (
-                      typeof trip.logisticsProvider === 'string' ? (
-                        <span className="text-gray-500 dark:text-gray-400">Loading...</span>
                       ) : (
-                        <div>
-                          <div className="font-medium">{trip.logisticsProvider.name}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {trip.logisticsProvider.contactNumber}
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.logisticsProvider ? (
+                        typeof trip.logisticsProvider === 'string' ? (
+                          <span className="text-gray-500 dark:text-gray-400">Loading...</span>
+                        ) : (
+                          <div>
+                            <div className="font-medium">{trip.logisticsProvider.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {trip.logisticsProvider.contactNumber}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">No provider assigned</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <select
-                    value={trip.currentStatus}
-                    onChange={(e) => handleStatusChange(trip, e.target.value as TripStatus)}
+                        )
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">No provider assigned</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={trip.currentStatus}
+                      onChange={(e) => handleStatusChange(trip, e.target.value as TripStatus)}
                     disabled={trip.currentStatus === 'completed'}
                     className={`text-xs font-semibold rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500 ${getTripStatusColor(trip.currentStatus)} ${
                       trip.currentStatus === 'completed' ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
-                  >
-                    <option value="created">Created</option>
-                    <option value="in-transit">In Transit</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.cstmCreatedBy ? (
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {getUserDisplayName(trip.cstmCreatedBy)}
-                        </span>
-                        {getUserEmail(trip.cstmCreatedBy) && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {getUserEmail(trip.cstmCreatedBy)}
+                    >
+                      <option value="created">Created</option>
+                      <option value="in-transit">In Transit</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.cstmCreatedBy ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {getUserDisplayName(trip.cstmCreatedBy)}
                           </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.cstmUpdatedBy ? (
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {getUserDisplayName(trip.cstmUpdatedBy)}
-                        </span>
-                        {getUserEmail(trip.cstmUpdatedBy) && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {getUserEmail(trip.cstmUpdatedBy)}
+                          {getUserEmail(trip.cstmCreatedBy) && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getUserEmail(trip.cstmCreatedBy)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.cstmUpdatedBy ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {getUserDisplayName(trip.cstmUpdatedBy)}
                           </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => handleViewTrip(trip)}
-                      className="p-2 text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors"
-                      title="View Trip"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleEditTrip(trip)}
-                      className="p-2 text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors"
-                      title="Edit Trip"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteTrip(trip)}
-                      className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title="Delete Trip"
-                    >
-                      <TrashBinIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                          {getUserEmail(trip.cstmUpdatedBy) && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getUserEmail(trip.cstmUpdatedBy)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={() => handleViewTrip(trip)}
+                        className="p-2 text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors"
+                        title="View Trip"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleEditTrip(trip)}
+                        className="p-2 text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors"
+                        title="Edit Trip"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTrip(trip)}
+                        className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Delete Trip"
+                      >
+                        <TrashBinIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
       </div>
 
       {/* Pagination */}
@@ -585,7 +585,7 @@ const TripsPage = () => {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{getPageTitle()}</h1>
             </div>
           <p className="text-gray-600 dark:text-gray-400">{getPageDescription()}</p>
-          </div>
+        </div>
 
         {/* Add Button */}
         <div className="mb-6 flex justify-end">

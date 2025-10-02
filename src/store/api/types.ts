@@ -105,6 +105,11 @@ export interface Vehicle extends BaseEntity {
   currentStatus: VehicleCurrentStatus | string;
   isActive: boolean | null;
   publishedAt: string;
+  // New fields
+  odometerReading?: string;
+  engineNumber?: string;
+  chassisNumber?: string;
+  typeOfVehicleAxle?: string;
   cstmCreatedBy?: string | User;
   cstmUpdatedBy?: string | User | User[];
   trips?: string[];
@@ -131,7 +136,12 @@ export interface VehicleCreateRequest {
   model: string;
   type: VehicleType;
   currentStatus: VehicleCurrentStatus | string;
-  active: boolean;
+  isActive: boolean;
+  // New mandatory fields
+  odometerReading: string;
+  engineNumber: string;
+  chassisNumber: string;
+  typeOfVehicleAxle: string;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
   trips?: string[];
@@ -263,6 +273,13 @@ export interface Driver extends BaseEntity {
   bloodGroup?: string;
   emergencyContactName?: string;
   emergencyContactRelation?: string;
+  // New fields
+  drivingLicenceNumber?: string;
+  accountHolderName?: string;
+  accountNumber?: string;
+  branchName?: string;
+  ifscCode?: string;
+  accountType?: string;
   cstmCreatedBy?: string | User;
   cstmUpdatedBy?: string | User | User[];
   user?: User;
@@ -285,6 +302,13 @@ export interface DriverCreateRequest {
   bloodGroup?: string;
   emergencyContactName?: string;
   emergencyContactRelation?: string;
+  // New fields
+  drivingLicenceNumber?: string;
+  accountHolderName?: string;
+  accountNumber?: string;
+  branchName?: string;
+  ifscCode?: string;
+  accountType?: string;
   // User creation fields
   username: string;
   email: string;

@@ -11,7 +11,7 @@ interface DriverCreateModalProps {
 
 export default function DriverCreateModal({ isOpen, onClose, onSuccess }: DriverCreateModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   useEffect(() => {
     if (isOpen) {
@@ -48,6 +48,8 @@ export default function DriverCreateModal({ isOpen, onClose, onSuccess }: Driver
       case 2:
         return 'User Account';
       case 3:
+        return 'Banking Details';
+      case 4:
         return 'Review & Create';
       default:
         return 'Add New Driver';
@@ -61,6 +63,8 @@ export default function DriverCreateModal({ isOpen, onClose, onSuccess }: Driver
       case 2:
         return 'Create login credentials for the driver';
       case 3:
+        return 'Enter banking and license details';
+      case 4:
         return 'Review all information before creating the driver';
       default:
         return '';
@@ -110,7 +114,7 @@ export default function DriverCreateModal({ isOpen, onClose, onSuccess }: Driver
               
               {/* Step Indicators */}
               <div className="flex justify-between mt-4">
-                {[1, 2, 3].map((step) => (
+                {[1, 2, 3, 4].map((step) => (
                   <div key={step} className="flex items-center">
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${

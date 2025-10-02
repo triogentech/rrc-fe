@@ -26,6 +26,13 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
     panNumber: '',
     address: '',
     reference: '',
+    // New fields
+    drivingLicenceNumber: '',
+    accountHolderName: '',
+    accountNumber: '',
+    branchName: '',
+    ifscCode: '',
+    accountType: '',
     // User creation fields
     username: '',
     email: '',
@@ -133,6 +140,17 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
       } else if (formData.password.length < 6) {
         newErrors.password = 'Password must be at least 6 characters';
       }
+    } else if (step === 3) {
+      // Banking Details validation
+      if (formData.drivingLicenceNumber && !/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(formData.drivingLicenceNumber)) {
+        newErrors.drivingLicenceNumber = 'Driving license number must be in valid format (e.g., DL01234567890123)';
+      }
+      if (formData.accountNumber && !/^\d{9,18}$/.test(formData.accountNumber)) {
+        newErrors.accountNumber = 'Account number must be 9-18 digits';
+      }
+      if (formData.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
+        newErrors.ifscCode = 'IFSC code must be in valid format (e.g., SBIN0001234)';
+      }
     }
 
     setErrors(newErrors);
@@ -180,6 +198,12 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
         // Only include optional fields if they have values
         ...(formData.panNumber?.trim() && { panNumber: formData.panNumber.trim() }),
         ...(formData.reference?.trim() && { reference: formData.reference.trim() }),
+        ...(formData.drivingLicenceNumber?.trim() && { drivingLicenceNumber: formData.drivingLicenceNumber.trim() }),
+        ...(formData.accountHolderName?.trim() && { accountHolderName: formData.accountHolderName.trim() }),
+        ...(formData.accountNumber?.trim() && { accountNumber: formData.accountNumber.trim() }),
+        ...(formData.branchName?.trim() && { branchName: formData.branchName.trim() }),
+        ...(formData.ifscCode?.trim() && { ifscCode: formData.ifscCode.trim() }),
+        ...(formData.accountType?.trim() && { accountType: formData.accountType.trim() }),
       };
 
       console.log('Submitting driver data:', cleanedData);
@@ -198,6 +222,13 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
           panNumber: '',
           address: '',
           reference: '',
+          // New fields
+          drivingLicenceNumber: '',
+          accountHolderName: '',
+          accountNumber: '',
+          branchName: '',
+          ifscCode: '',
+          accountType: '',
           // User fields
           username: '',
           email: '',
@@ -427,7 +458,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column - User Fields */}
+        {/* Left Column - Username and Email */}
         <div className="space-y-4">
           {/* Username */}
           <div>
@@ -469,7 +500,10 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
               <p className="mt-1 text-sm text-red-500">{errors.email}</p>
             )}
           </div>
+        </div>
 
+        {/* Right Column - Password */}
+        <div className="space-y-4">
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -499,99 +533,161 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
             )}
           </div>
         </div>
-
-        {/* Right Column - Status Fields */}
-        <div className="space-y-4">
-          {/* Confirmed Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirmed
-            </label>
-            <div className="flex space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="confirmed"
-                  checked={formData.confirmed === true}
-                  onChange={() => setFormData(prev => ({ ...prev, confirmed: true }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">TRUE</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="confirmed"
-                  checked={formData.confirmed === false}
-                  onChange={() => setFormData(prev => ({ ...prev, confirmed: false }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">FALSE</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Blocked Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Blocked
-            </label>
-            <div className="flex space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="blocked"
-                  checked={formData.blocked === false}
-                  onChange={() => setFormData(prev => ({ ...prev, blocked: false }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">FALSE</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="blocked"
-                  checked={formData.blocked === true}
-                  onChange={() => setFormData(prev => ({ ...prev, blocked: true }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">TRUE</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Role */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Role
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              disabled={isLoading}
-            >
-              <option value="Driver">Driver</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-            </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Default role is set to Driver</p>
-          </div>
-        </div>
       </div>
     </div>
   );
 
   const renderStep3 = () => (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column - License Details */}
+        <div className="space-y-4">
+          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">License Information</h5>
+          
+          {/* Driving License Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Driving License Number
+            </label>
+            <input
+              type="text"
+              value={formData.drivingLicenceNumber}
+              onChange={(e) => {
+                const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+                handleInputChange('drivingLicenceNumber', value);
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                errors.drivingLicenceNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              placeholder="Enter driving license number"
+              disabled={isLoading}
+              maxLength={15}
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Format: DL01234567890123 (15 characters)
+            </p>
+            {errors.drivingLicenceNumber && (
+              <p className="mt-1 text-sm text-red-500">{errors.drivingLicenceNumber}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - Banking Details */}
+        <div className="space-y-4">
+          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Banking Information</h5>
+          
+          {/* Account Holder Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Account Holder Name
+            </label>
+            <input
+              type="text"
+              value={formData.accountHolderName}
+              onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter account holder name"
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Account Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Account Number
+            </label>
+            <input
+              type="text"
+              value={formData.accountNumber}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 18);
+                handleInputChange('accountNumber', value);
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                errors.accountNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              placeholder="Enter account number"
+              disabled={isLoading}
+              maxLength={18}
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              9-18 digits
+            </p>
+            {errors.accountNumber && (
+              <p className="mt-1 text-sm text-red-500">{errors.accountNumber}</p>
+            )}
+          </div>
+
+          {/* Branch Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Branch Name
+            </label>
+            <input
+              type="text"
+              value={formData.branchName}
+              onChange={(e) => handleInputChange('branchName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter branch name"
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* IFSC Code */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              IFSC Code
+            </label>
+            <input
+              type="text"
+              value={formData.ifscCode}
+              onChange={(e) => {
+                const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+                handleInputChange('ifscCode', value);
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                errors.ifscCode ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              placeholder="Enter IFSC code"
+              disabled={isLoading}
+              maxLength={11}
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Format: SBIN0001234 (11 characters)
+            </p>
+            {errors.ifscCode && (
+              <p className="mt-1 text-sm text-red-500">{errors.ifscCode}</p>
+            )}
+          </div>
+
+          {/* Account Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Account Type
+            </label>
+            <select
+              value={formData.accountType}
+              onChange={(e) => handleInputChange('accountType', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              disabled={isLoading}
+            >
+              <option value="">Select account type</option>
+              <option value="savings">Savings</option>
+              <option value="current">Current</option>
+              <option value="salary">Salary</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <div className="space-y-6">
       <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
         <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Review Information</h4>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Basic Information */}
           <div>
             <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Basic Information</h5>
@@ -664,6 +760,49 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
               </div>
             </div>
           </div>
+
+          {/* Banking & License Details */}
+          <div>
+            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Banking & License</h5>
+            <div className="space-y-2">
+              {formData.drivingLicenceNumber && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Driving License:</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{formData.drivingLicenceNumber}</p>
+                </div>
+              )}
+              {formData.accountHolderName && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Account Holder:</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{formData.accountHolderName}</p>
+                </div>
+              )}
+              {formData.accountNumber && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Account Number:</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{formData.accountNumber}</p>
+                </div>
+              )}
+              {formData.branchName && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Branch:</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{formData.branchName}</p>
+                </div>
+              )}
+              {formData.ifscCode && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">IFSC Code:</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{formData.ifscCode}</p>
+                </div>
+              )}
+              {formData.accountType && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Account Type:</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{formData.accountType}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -677,6 +816,8 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
         return renderStep2();
       case 3:
         return renderStep3();
+      case 4:
+        return renderStep4();
       default:
         return renderStep1();
     }

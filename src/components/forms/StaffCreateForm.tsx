@@ -198,7 +198,7 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column - User Fields */}
+        {/* Left Column - Username and Email */}
         <div className="space-y-4">
           {/* Username */}
           <div>
@@ -240,7 +240,10 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
               <p className="mt-1 text-sm text-red-500">{errors.email}</p>
             )}
           </div>
+        </div>
 
+        {/* Right Column - Password */}
+        <div className="space-y-4">
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -268,89 +271,6 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
             {errors.password && (
               <p className="mt-1 text-sm text-red-500">{errors.password}</p>
             )}
-          </div>
-        </div>
-
-        {/* Right Column - Status Fields */}
-        <div className="space-y-4">
-          {/* Confirmed Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirmed
-            </label>
-            <div className="flex space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="confirmed"
-                  checked={formData.confirmed === true}
-                  onChange={() => setFormData(prev => ({ ...prev, confirmed: true }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">TRUE</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="confirmed"
-                  checked={formData.confirmed === false}
-                  onChange={() => setFormData(prev => ({ ...prev, confirmed: false }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">FALSE</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Blocked Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Blocked
-            </label>
-            <div className="flex space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="blocked"
-                  checked={formData.blocked === false}
-                  onChange={() => setFormData(prev => ({ ...prev, blocked: false }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">FALSE</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="blocked"
-                  checked={formData.blocked === true}
-                  onChange={() => setFormData(prev => ({ ...prev, blocked: true }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                  disabled={isLoading}
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">TRUE</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Role */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Role
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              disabled={isLoading}
-            >
-              <option value="Staff">Staff</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-            </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Default role is set to Staff</p>
           </div>
         </div>
       </div>
