@@ -1,5 +1,103 @@
 @import 'tailwindcss';
 
+/* Toast notifications z-index fix and dark blue theme */
+.Toastify__toast-container {
+  z-index: 9999 !important;
+}
+
+.Toastify__toast {
+  z-index: 9999 !important;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1rem;
+}
+
+/* Success toast - Green gradient */
+.Toastify__toast--success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+}
+
+.Toastify__toast--success .Toastify__toast-icon {
+  color: #ffffff !important;
+}
+
+/* Error toast - Red gradient */
+.Toastify__toast--error {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
+  color: #ffffff !important;
+}
+
+.Toastify__toast--error .Toastify__toast-icon {
+  color: #ffffff !important;
+}
+
+/* Warning toast - Orange gradient */
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important;
+  color: #ffffff !important;
+}
+
+.Toastify__toast--warning .Toastify__toast-icon {
+  color: #ffffff !important;
+}
+
+/* Info toast - Blue gradient */
+.Toastify__toast--info {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  color: #ffffff !important;
+}
+
+.Toastify__toast--info .Toastify__toast-icon {
+  color: #ffffff !important;
+}
+
+/* Default/Loading toast - Dark blue gradient (dashboard theme) */
+.Toastify__toast--default {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+}
+
+/* Progress bar styling */
+.Toastify__progress-bar {
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+
+.Toastify__progress-bar--success {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+.Toastify__progress-bar--error {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+.Toastify__progress-bar--warning {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+.Toastify__progress-bar--info {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Close button styling */
+.Toastify__close-button {
+  color: #ffffff !important;
+  opacity: 0.8;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+/* Spinner for loading state */
+.Toastify__spinner {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

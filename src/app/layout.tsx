@@ -1,17 +1,12 @@
 import { Outfit } from 'next/font/google';
 import './globals.css';
+import 'react-toastify/dist/ReactToastify.css';
 
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ReduxProvider } from '@/store/providers/ReduxProvider';
-import AuthDebugger from '@/components/debug/AuthDebugger';
-
-// Import test utilities in development
-if (process.env.NODE_ENV === 'development') {
-  require('@/utils/testAuth');
-  require('@/utils/debugDriverCreation');
-}
+import { ToastContainer } from 'react-toastify';
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -30,7 +25,19 @@ export default function RootLayout({
             <ThemeProvider>
               <SidebarProvider>
                 {children}
-                {/* <AuthDebugger /> */}
+                <ToastContainer
+                  position="top-right"
+                  autoClose={5000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="light"
+                  style={{ zIndex: 9999 }}
+                />
               </SidebarProvider>
             </ThemeProvider>
           </AuthProvider>

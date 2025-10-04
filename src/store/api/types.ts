@@ -406,6 +406,12 @@ export interface Trip extends BaseEntity {
   publishedAt: string;
   cstmCreatedBy?: string | User;
   cstmUpdatedBy?: string | User | User[];
+  // New fields
+  vendorCode?: string | null;
+  vendorName?: string | null;
+  totalTripTimeInMinutes?: number | null;
+  freightTotalAmount?: number | null;
+  advanceAmount?: number | null;
   // Relations
   driver?: string | Driver;
   vehicle?: string | Vehicle;
@@ -434,6 +440,12 @@ export interface TripCreateRequest {
   logisticsProvider?: string;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
+  // New fields
+  vendorCode?: string | null;
+  vendorName?: string | null;
+  totalTripTimeInMinutes?: number | null;
+  freightTotalAmount?: number | null;
+  advanceAmount?: number | null;
 }
 
 export interface TripUpdateRequest extends Partial<TripCreateRequest> {

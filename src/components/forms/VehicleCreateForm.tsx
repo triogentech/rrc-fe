@@ -4,6 +4,7 @@ import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { VehicleCreateRequest, Vehicle } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface VehicleCreateFormProps {
   onSuccess?: (vehicle: Vehicle) => void;
@@ -82,6 +83,7 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
     e.preventDefault();
     
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
@@ -109,10 +111,12 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
       
       if (vehicle) {
         console.log('Vehicle created successfully:', vehicle);
+        showSuccessToast(`Vehicle "${vehicle.vehicleNumber}" created successfully!`);
         onSuccess?.(vehicle);
       }
     } catch (error) {
       console.error('Error creating vehicle:', error);
+      showErrorToast(error);
     }
   };
 

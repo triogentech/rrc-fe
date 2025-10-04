@@ -13,6 +13,7 @@ import type { Trip } from '@/store/api/types';
 import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 import { EyeIcon, PencilIcon, TrashBinIcon } from '@/icons';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
 
 const TripsPage = () => {
   const searchParams = useSearchParams();
@@ -88,6 +89,90 @@ const TripsPage = () => {
     }
   }, [statusFilter]);
 
+  // Calculate estimated TAT (Turn Around Time) in hours
+  const getEstimatedTAT = (trip: Trip): string => {
+    if (!trip.estimatedStartTime || !trip.estimatedEndTime) {
+      return 'N/A';
+    }
+    
+    const startTime = new Date(trip.estimatedStartTime);
+    const endTime = new Date(trip.estimatedEndTime);
+    const diffInMs = endTime.getTime() - startTime.getTime();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      const minutes = Math.round(diffInHours * 60);
+      return `${minutes}m`;
+    } else if (diffInHours < 24) {
+      return `${Math.round(diffInHours * 10) / 10}h`;
+    } else {
+      const days = Math.floor(diffInHours / 24);
+      const remainingHours = Math.round((diffInHours % 24) * 10) / 10;
+      return `${days}d ${remainingHours}h`;
+    }
+  };
+
+  // Calculate actual TAT (Turn Around Time) in hours
+  const getActualTAT = (trip: Trip): string => {
+    if (!trip.estimatedStartTime || !trip.actualEndTime) {
+      return 'N/A';
+    }
+    
+    const startTime = new Date(trip.estimatedStartTime);
+    const endTime = new Date(trip.actualEndTime);
+    const diffInMs = endTime.getTime() - startTime.getTime();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      const minutes = Math.round(diffInHours * 60);
+      return `${minutes}m`;
+    } else if (diffInHours < 24) {
+      return `${Math.round(diffInHours * 10) / 10}h`;
+    } else {
+      const days = Math.floor(diffInHours / 24);
+      const remainingHours = Math.round((diffInHours % 24) * 10) / 10;
+      return `${days}d ${remainingHours}h`;
+    }
+  };
+
+  // Calculate TAT variance (actual vs estimated)
+  const getTATVariance = (trip: Trip): { variance: string; isOverdue: boolean } => {
+    if (!trip.estimatedStartTime || !trip.estimatedEndTime || !trip.actualEndTime) {
+      return { variance: 'N/A', isOverdue: false };
+    }
+    
+    const estimatedStart = new Date(trip.estimatedStartTime);
+    const estimatedEnd = new Date(trip.estimatedEndTime);
+    const actualEnd = new Date(trip.actualEndTime);
+    
+    const estimatedTAT = estimatedEnd.getTime() - estimatedStart.getTime();
+    const actualTAT = actualEnd.getTime() - estimatedStart.getTime();
+    
+    const varianceMs = actualTAT - estimatedTAT;
+    const varianceHours = varianceMs / (1000 * 60 * 60);
+    
+    if (Math.abs(varianceHours) < 0.1) {
+      return { variance: 'On Time', isOverdue: false };
+    }
+    
+    const isOverdue = varianceHours > 0;
+    const absVarianceHours = Math.abs(varianceHours);
+    
+    let varianceText: string;
+    if (absVarianceHours < 1) {
+      const minutes = Math.round(absVarianceHours * 60);
+      varianceText = `${minutes}m ${isOverdue ? 'overdue' : 'early'}`;
+    } else if (absVarianceHours < 24) {
+      varianceText = `${Math.round(absVarianceHours * 10) / 10}h ${isOverdue ? 'overdue' : 'early'}`;
+    } else {
+      const days = Math.floor(absVarianceHours / 24);
+      const remainingHours = Math.round((absVarianceHours % 24) * 10) / 10;
+      varianceText = `${days}d ${remainingHours}h ${isOverdue ? 'overdue' : 'early'}`;
+    }
+    
+    return { variance: varianceText, isOverdue };
+  };
+
   // Update document title based on current status
   useEffect(() => {
     document.title = `${getPageTitle()} - RRC Trips`;
@@ -97,6 +182,7 @@ const TripsPage = () => {
   // Handle trip creation success
   const handleTripCreated = (trip: Trip) => {
     console.log('Trip created successfully:', trip);
+    showSuccessToast(`Trip "${trip.tripNumber}" created successfully!`);
     // Refresh the trips list
     getTrips();
     handleSuccess(trip);
@@ -129,6 +215,7 @@ const TripsPage = () => {
   // Handle trip update success
   const handleTripUpdated = (trip: Trip) => {
     console.log('Trip updated successfully:', trip);
+    showSuccessToast(`Trip "${trip.tripNumber}" updated successfully!`);
     // Refresh the trips list
     getTrips();
     handleCloseEditModal();
@@ -156,12 +243,14 @@ const TripsPage = () => {
       const success = await deleteTrip(selectedTrip.documentId);
       if (success) {
         console.log('Trip deleted successfully');
+        showSuccessToast(`Trip "${selectedTrip.tripNumber}" deleted successfully!`);
         // Refresh the trips list
         getTrips();
         handleCloseDeleteModal();
       }
     } catch (error) {
       console.error('Error deleting trip:', error);
+      showErrorToast(error);
     } finally {
       setIsDeleting(false);
     }
@@ -187,10 +276,15 @@ const TripsPage = () => {
         startPoint: trip.startPoint || '',
         endPoint: trip.endPoint || '',
         totalTripDistanceInKM: trip.totalTripDistanceInKM || 0,
+        // Include the new mandatory fields with proper defaults
+        totalTripTimeInMinutes: trip.totalTripTimeInMinutes || 0,
+        freightTotalAmount: trip.freightTotalAmount || 0,
+        advanceAmount: trip.advanceAmount || 0,
       };
       console.log('Update data:', updateData);
       await updateTrip(trip.documentId, updateData);
       console.log('Trip status updated successfully');
+      showSuccessToast(`Trip "${trip.tripNumber}" status updated to ${newStatus}!`);
       
       // Update vehicle status based on trip status
       if (trip.vehicle && typeof trip.vehicle === 'object' && trip.vehicle.documentId) {
@@ -211,10 +305,34 @@ const TripsPage = () => {
         try {
           await updateVehicle(trip.vehicle.documentId, {
             currentStatus: vehicleStatus,
+            // Include required fields to avoid validation errors
+            vehicleNumber: trip.vehicle.vehicleNumber || '',
+            model: trip.vehicle.model || '',
+            type: trip.vehicle.type || 'truck',
+            isActive: trip.vehicle.isActive !== false,
+            odometerReading: trip.vehicle.odometerReading || '',
+            engineNumber: trip.vehicle.engineNumber || '',
+            chassisNumber: trip.vehicle.chassisNumber || '',
+            typeOfVehicleAxle: trip.vehicle.typeOfVehicleAxle || '',
           });
           console.log('Vehicle status updated successfully');
         } catch (vehicleError) {
           console.error('Error updating vehicle status:', vehicleError);
+          
+          // Check if it's a validation error and show specific message
+          if (vehicleError && typeof vehicleError === 'object' && 'error' in vehicleError) {
+            const strapiError = vehicleError as { error?: { name?: string; details?: { errors?: Array<{ path?: string[]; message?: string }> } } };
+            if (strapiError.error?.name === 'ValidationError' && strapiError.error?.details?.errors) {
+              const validationErrors = strapiError.error.details.errors
+                .map((err) => `${err.path?.join('.')}: ${err.message}`)
+                .join(', ');
+              showWarningToast(`Trip status updated but vehicle validation failed: ${validationErrors}`);
+            } else {
+              showWarningToast('Trip status updated but failed to update vehicle status');
+            }
+          } else {
+            showWarningToast('Trip status updated but failed to update vehicle status');
+          }
           // Don't throw here, as trip was already updated successfully
         }
       }
@@ -224,6 +342,21 @@ const TripsPage = () => {
     } catch (error) {
       console.error('Error updating trip status:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Check if it's a validation error and show specific message
+      if (error && typeof error === 'object' && 'error' in error) {
+        const strapiError = error as { error?: { name?: string; details?: { errors?: Array<{ path?: string[]; message?: string }> } } };
+        if (strapiError.error?.name === 'ValidationError' && strapiError.error?.details?.errors) {
+          const validationErrors = strapiError.error.details.errors
+            .map((err) => `${err.path?.join('.')}: ${err.message}`)
+            .join(', ');
+          showErrorToast(`Validation failed: ${validationErrors}`);
+        } else {
+          showErrorToast(error);
+        }
+      } else {
+        showErrorToast(error);
+      }
     }
   };
 
@@ -249,11 +382,16 @@ const TripsPage = () => {
         startPoint: selectedTrip.startPoint || '',
         endPoint: selectedTrip.endPoint || '',
         totalTripDistanceInKM: selectedTrip.totalTripDistanceInKM || 0,
+        // Include the new mandatory fields with proper defaults
+        totalTripTimeInMinutes: selectedTrip.totalTripTimeInMinutes || 0,
+        freightTotalAmount: selectedTrip.freightTotalAmount || 0,
+        advanceAmount: selectedTrip.advanceAmount || 0,
       };
       
       console.log('Update data:', updateData);
       await updateTrip(selectedTrip.documentId, updateData);
       console.log('Trip completed with actual end time successfully');
+      showSuccessToast(`Trip "${selectedTrip.tripNumber}" completed successfully!`);
       
       // Update vehicle status to 'idle' when trip is completed
       if (selectedTrip.vehicle && typeof selectedTrip.vehicle === 'object' && selectedTrip.vehicle.documentId) {
@@ -262,10 +400,34 @@ const TripsPage = () => {
         try {
           await updateVehicle(selectedTrip.vehicle.documentId, {
             currentStatus: VehicleCurrentStatus.IDLE,
+            // Include required fields to avoid validation errors
+            vehicleNumber: selectedTrip.vehicle.vehicleNumber || '',
+            model: selectedTrip.vehicle.model || '',
+            type: selectedTrip.vehicle.type || 'truck',
+            isActive: selectedTrip.vehicle.isActive !== false,
+            odometerReading: selectedTrip.vehicle.odometerReading || '',
+            engineNumber: selectedTrip.vehicle.engineNumber || '',
+            chassisNumber: selectedTrip.vehicle.chassisNumber || '',
+            typeOfVehicleAxle: selectedTrip.vehicle.typeOfVehicleAxle || '',
           });
           console.log('Vehicle status updated to idle successfully');
         } catch (vehicleError) {
           console.error('Error updating vehicle status to idle:', vehicleError);
+          
+          // Check if it's a validation error and show specific message
+          if (vehicleError && typeof vehicleError === 'object' && 'error' in vehicleError) {
+            const strapiError = vehicleError as { error?: { name?: string; details?: { errors?: Array<{ path?: string[]; message?: string }> } } };
+            if (strapiError.error?.name === 'ValidationError' && strapiError.error?.details?.errors) {
+              const validationErrors = strapiError.error.details.errors
+                .map((err) => `${err.path?.join('.')}: ${err.message}`)
+                .join(', ');
+              showWarningToast(`Trip completed but vehicle validation failed: ${validationErrors}`);
+            } else {
+              showWarningToast('Trip completed but failed to update vehicle status');
+            }
+          } else {
+            showWarningToast('Trip completed but failed to update vehicle status');
+          }
           // Don't throw here, as trip was already updated successfully
         }
       }
@@ -276,6 +438,21 @@ const TripsPage = () => {
     } catch (error) {
       console.error('Error setting actual end time:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Check if it's a validation error and show specific message
+      if (error && typeof error === 'object' && 'error' in error) {
+        const strapiError = error as { error?: { name?: string; details?: { errors?: Array<{ path?: string[]; message?: string }> } } };
+        if (strapiError.error?.name === 'ValidationError' && strapiError.error?.details?.errors) {
+          const validationErrors = strapiError.error.details.errors
+            .map((err) => `${err.path?.join('.')}: ${err.message}`)
+            .join(', ');
+          showErrorToast(`Validation failed: ${validationErrors}`);
+        } else {
+          showErrorToast(error);
+        }
+      } else {
+        showErrorToast(error);
+      }
     } finally {
       setIsSettingActualEndTime(false);
     }
@@ -310,6 +487,12 @@ const TripsPage = () => {
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Duration
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Est. TAT
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Actual TAT
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Distance (KM)
@@ -409,6 +592,40 @@ const TripsPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {getTripDuration(trip)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      <div className="font-medium">{getEstimatedTAT(trip)}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Turn Around Time
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.actualEndTime ? (
+                        <div>
+                          <div className="font-medium">{getActualTAT(trip)}</div>
+                          {trip.currentStatus === 'completed' && (
+                            (() => {
+                              const variance = getTATVariance(trip);
+                              return (
+                                <div className={`text-xs ${variance.isOverdue ? 'text-red-600 dark:text-red-400' : variance.variance === 'On Time' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                                  {variance.variance}
+                                </div>
+                              );
+                            })()
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400">N/A</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {trip.currentStatus === 'completed' ? 'No actual end time' : 'Trip in progress'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

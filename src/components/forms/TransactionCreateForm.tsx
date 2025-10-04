@@ -5,6 +5,7 @@ import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import { useTrips } from '@/store/hooks/useTrips';
 import { generateSimplifiedTransactionDetails, generateTransactionId, generateRRN, validateTransactionDetails, getPaymentMethodConfig, getDefaultPaymentValues, validatePaymentFields } from '@/utils/transactionDetails';
 import type { TransactionCreateRequest, Transaction } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface TransactionCreateFormProps {
   onSuccess?: (transaction: Transaction) => void;
@@ -285,6 +286,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     e.preventDefault();
     
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
@@ -329,6 +331,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
 
       const newTransaction = await createTransaction(finalData);
       if (newTransaction) {
+        showSuccessToast(`Transaction "${newTransaction.transactionId}" created successfully!`);
         onSuccess?.(newTransaction);
         // Reset form
         setFormData({
@@ -358,6 +361,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
       }
     } catch (error) {
       console.error('Failed to create transaction:', error);
+      showErrorToast(error);
     }
   };
 
@@ -369,20 +373,19 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
             <h4 className="text-lg font-medium text-gray-900 dark:text-white">Basic Transaction Details</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Type */}
+              {/* Type - Hidden field, always debit */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Type <span className="text-red-500">*</span>
+                  Type
                 </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => handleInputChange('type', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  disabled={isLoading}
-                >
-                  <option value="debit">Debit</option>
-                  <option value="credit">Credit</option>
-                </select>
+                <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                  Debit (Default)
+                </div>
+                <input
+                  type="hidden"
+                  value="debit"
+                  name="type"
+                />
               </div>
 
               {/* Amount */}

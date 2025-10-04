@@ -6,6 +6,7 @@ import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { TripCreateRequest, Trip, Vehicle, Driver } from '@/store/api/types';
 import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
+import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
 
 interface TripCreateFormProps {
   onSuccess: (trip: Trip) => void;
@@ -28,12 +29,33 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     currentStatus: 'created' as TripStatus,
     driver: undefined,
     vehicle: undefined,
+    // New fields
+    freightTotalAmount: 0,
+    advanceAmount: 0,
+    totalTripTimeInMinutes: 0,
     // Custom fields
     cstmCreatedBy: user?.documentId || user?.id || '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
+  // Add state for totalTripTimeInHours (UI field)
+  const [totalTripTimeInHours, setTotalTripTimeInHours] = useState<number>(0);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Calculate estimatedEndTime and totalTripTimeInMinutes when totalTripTimeInHours or estimatedStartTime changes
+  useEffect(() => {
+    if (totalTripTimeInHours > 0 && formData.estimatedStartTime) {
+      const startTime = new Date(formData.estimatedStartTime);
+      const endTime = new Date(startTime.getTime() + (totalTripTimeInHours * 60 * 60 * 1000));
+      
+      setFormData(prev => ({
+        ...prev,
+        estimatedEndTime: endTime.toISOString().slice(0, 16), // Format for datetime-local input
+        totalTripTimeInMinutes: totalTripTimeInHours * 60
+      }));
+    }
+  }, [totalTripTimeInHours, formData.estimatedStartTime]);
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
   const [vehiclesInUse, setVehiclesInUse] = useState<Set<string>>(new Set());
   const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
@@ -59,31 +81,47 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   // Process vehicles when they change
   useEffect(() => {
     if (vehicles && vehicles.length > 0) {
-      // Filter vehicles to only show active ones with "assigned" or "idle" status
+      // Filter vehicles to only show active ones with "idle" status
+      // "assigned" vehicles are already assigned to trips and shouldn't be available for new trips
       const filteredVehicles = vehicles.filter((vehicle: Vehicle) => 
         vehicle.isActive !== false && 
-        (vehicle.currentStatus === 'assigned' || vehicle.currentStatus === 'idle')
+        vehicle.currentStatus === 'idle'
       );
       
       setAvailableVehicles(filteredVehicles);
       
       // Check which vehicles are currently in use by making API calls
       const checkVehiclesInUse = async () => {
-        const { isVehicleInUse } = await import('@/utils/vehicleInUse');
-        const inUseChecks = await Promise.all(
-          filteredVehicles.map(async (vehicle: Vehicle) => {
-            const inUse = await isVehicleInUse(vehicle.documentId);
-            return { vehicleId: vehicle.documentId, inUse };
-          })
-        );
-        
-        const inUseSet = new Set<string>(
-          inUseChecks
-            .filter((check: { vehicleId: string; inUse: boolean }) => check.inUse)
-            .map((check: { vehicleId: string; inUse: boolean }) => check.vehicleId)
-        );
-        
-        setVehiclesInUse(inUseSet);
+        try {
+          const { isVehicleInUse } = await import('@/utils/vehicleInUse');
+          const inUseChecks = await Promise.allSettled(
+            filteredVehicles.map(async (vehicle: Vehicle) => {
+              try {
+                const inUse = await isVehicleInUse(vehicle.documentId);
+                return { vehicleId: vehicle.documentId, inUse };
+              } catch (error) {
+                console.warn(`Error checking vehicle ${vehicle.documentId}:`, error);
+                return { vehicleId: vehicle.documentId, inUse: false };
+              }
+            })
+          );
+          
+          const inUseSet = new Set<string>(
+            inUseChecks
+              .filter((result): result is PromiseFulfilledResult<{ vehicleId: string; inUse: boolean }> => 
+                result.status === 'fulfilled'
+              )
+              .map(result => result.value)
+              .filter((check: { vehicleId: string; inUse: boolean }) => check.inUse)
+              .map((check: { vehicleId: string; inUse: boolean }) => check.vehicleId)
+          );
+          
+          setVehiclesInUse(inUseSet);
+        } catch (error) {
+          console.error('Error checking vehicle availability:', error);
+          // Set empty set to allow form to continue working
+          setVehiclesInUse(new Set());
+        }
       };
       
       checkVehiclesInUse();
@@ -127,6 +165,26 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }
   };
 
+  // Check if driver or vehicle is available for real-time validation
+  const checkAvailability = (field: 'driver' | 'vehicle', value: string | null) => {
+    if (!value) return;
+    
+    if (field === 'driver' && driversInUse.has(value)) {
+      setErrors(prev => ({ 
+        ...prev, 
+        driver: 'Selected driver is currently on another trip' 
+      }));
+    } else if (field === 'vehicle' && vehiclesInUse.has(value)) {
+      setErrors(prev => ({ 
+        ...prev, 
+        vehicle: 'Selected vehicle is currently in use' 
+      }));
+    } else {
+      // Clear the error if the selection is valid
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
@@ -136,10 +194,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     
     if (!formData.estimatedStartTime) {
       newErrors.estimatedStartTime = 'Estimated Start Time is required';
-    }
-    
-    if (!formData.estimatedEndTime) {
-      newErrors.estimatedEndTime = 'Estimated End Time is required';
     }
     
     if (!formData.startPoint.trim()) {
@@ -162,12 +216,27 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       newErrors.vehicle = 'Vehicle is required';
     }
     
-    if (formData.estimatedStartTime && formData.estimatedEndTime) {
-      const startTime = new Date(formData.estimatedStartTime);
-      const endTime = new Date(formData.estimatedEndTime);
-      if (endTime <= startTime) {
-        newErrors.estimatedEndTime = 'End time must be after start time';
-      }
+    // New mandatory field validations
+    if (totalTripTimeInHours <= 0) {
+      newErrors.totalTripTimeInHours = 'Total Trip Time in Hours is required and must be greater than 0';
+    }
+    
+    if (!formData.freightTotalAmount || formData.freightTotalAmount <= 0) {
+      newErrors.freightTotalAmount = 'Freight Total Amount is required and must be greater than 0';
+    }
+    
+    if (!formData.advanceAmount || formData.advanceAmount <= 0) {
+      newErrors.advanceAmount = 'Advance Amount is required and must be greater than 0';
+    }
+    
+    // Check if selected driver is currently in use
+    if (formData.driver && driversInUse.has(formData.driver)) {
+      newErrors.driver = 'Selected driver is currently on another trip';
+    }
+    
+    // Check if selected vehicle is currently in use
+    if (formData.vehicle && vehiclesInUse.has(formData.vehicle)) {
+      newErrors.vehicle = 'Selected vehicle is currently in use';
     }
     
     setErrors(newErrors);
@@ -177,6 +246,26 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
+      return;
+    }
+
+    // Double-check availability before creating trip
+    if (formData.driver && driversInUse.has(formData.driver)) {
+      setErrors(prev => ({ 
+        ...prev, 
+        driver: 'Selected driver is currently on another trip' 
+      }));
+      showErrorToast('Selected driver is currently on another trip');
+      return;
+    }
+    
+    if (formData.vehicle && vehiclesInUse.has(formData.vehicle)) {
+      setErrors(prev => ({ 
+        ...prev, 
+        vehicle: 'Selected vehicle is currently in use' 
+      }));
+      showErrorToast('Selected vehicle is currently in use');
       return;
     }
 
@@ -192,15 +281,21 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
             console.log('Vehicle status updated to assigned successfully');
           } catch (vehicleError) {
             console.error('Error updating vehicle status:', vehicleError);
+            showWarningToast('Trip created but failed to update vehicle status');
             // Don't throw here, as trip was already created successfully
           }
         }
+        
+        // Show success notification
+        showSuccessToast(`Trip "${newTrip.tripNumber}" created successfully!`);
         
         onSuccess(newTrip);
       }
     } catch (err) {
       console.error('Failed to create trip:', err);
-      // Error is already handled by the thunk and set in Redux state
+      
+      // Use the helper function to extract and display Strapi error
+      showErrorToast(err);
     }
   };
 
@@ -248,21 +343,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           {errors.estimatedStartTime && <p className="mt-1 text-sm text-red-600">{errors.estimatedStartTime}</p>}
         </div>
 
-        {/* Estimated End Time */}
-        <div>
-          <label htmlFor="estimatedEndTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Estimated End Time *
-          </label>
-          <input
-            type="datetime-local"
-            id="estimatedEndTime"
-            value={formData.estimatedEndTime}
-            onChange={(e) => handleInputChange('estimatedEndTime', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            disabled={isLoading}
-          />
-          {errors.estimatedEndTime && <p className="mt-1 text-sm text-red-600">{errors.estimatedEndTime}</p>}
-        </div>
 
         {/* Start Point */}
         <div>
@@ -317,6 +397,91 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           {errors.totalTripDistanceInKM && <p className="mt-1 text-sm text-red-600">{errors.totalTripDistanceInKM}</p>}
         </div>
 
+        {/* Total Trip Time in Hours */}
+        <div>
+          <label htmlFor="totalTripTimeInHours" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Total Trip Time (Hours) *
+          </label>
+          <input
+            type="number"
+            id="totalTripTimeInHours"
+            value={totalTripTimeInHours}
+            onChange={(e) => {
+              const hours = parseFloat(e.target.value) || 0;
+              setTotalTripTimeInHours(hours);
+              if (errors.totalTripTimeInHours) {
+                setErrors(prev => ({ ...prev, totalTripTimeInHours: '' }));
+              }
+            }}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.totalTripTimeInHours ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="e.g., 8.5"
+            min="0"
+            step="0.1"
+            disabled={isLoading}
+          />
+          {errors.totalTripTimeInHours && <p className="mt-1 text-sm text-red-600">{errors.totalTripTimeInHours}</p>}
+        </div>
+
+        {/* Calculated Estimated End Time (Read-only) */}
+        {formData.estimatedEndTime && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Calculated End Time
+            </label>
+            <input
+              type="datetime-local"
+              value={formData.estimatedEndTime}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+              readOnly
+            />
+            <p className="mt-1 text-sm text-gray-500">This is automatically calculated based on start time and trip duration</p>
+          </div>
+        )}
+
+        {/* Freight Total Amount */}
+        <div>
+          <label htmlFor="freightTotalAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Freight Total Amount (₹) *
+          </label>
+          <input
+            type="number"
+            id="freightTotalAmount"
+            value={formData.freightTotalAmount || ''}
+            onChange={(e) => handleInputChange('freightTotalAmount', parseFloat(e.target.value) || 0)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.freightTotalAmount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="e.g., 5000"
+            min="0"
+            step="0.01"
+            disabled={isLoading}
+          />
+          {errors.freightTotalAmount && <p className="mt-1 text-sm text-red-600">{errors.freightTotalAmount}</p>}
+        </div>
+
+        {/* Advance Amount */}
+        <div>
+          <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Advance Amount (₹) *
+          </label>
+          <input
+            type="number"
+            id="advanceAmount"
+            value={formData.advanceAmount || ''}
+            onChange={(e) => handleInputChange('advanceAmount', parseFloat(e.target.value) || 0)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.advanceAmount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="e.g., 2000"
+            min="0"
+            step="0.01"
+            disabled={isLoading}
+          />
+          {errors.advanceAmount && <p className="mt-1 text-sm text-red-600">{errors.advanceAmount}</p>}
+        </div>
+
         {/* Driver Selection */}
         <div>
           <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -325,7 +490,11 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           <select
             id="driver"
             value={formData.driver || ''}
-            onChange={(e) => handleInputChange('driver', e.target.value || null)}
+            onChange={(e) => {
+              const value = e.target.value || null;
+              handleInputChange('driver', value);
+              checkAvailability('driver', value);
+            }}
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
               errors.driver ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
             }`}
@@ -358,6 +527,11 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
               No available drivers found. All drivers are currently on trips.
             </p>
           )}
+          {availableDrivers.length > 0 && (
+            <p className="mt-1 text-sm text-gray-500">
+              Drivers currently on trips are disabled and cannot be selected.
+            </p>
+          )}
         </div>
 
         {/* Vehicle Selection */}
@@ -368,7 +542,11 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           <select
             id="vehicle"
             value={formData.vehicle || ''}
-            onChange={(e) => handleInputChange('vehicle', e.target.value || null)}
+            onChange={(e) => {
+              const value = e.target.value || null;
+              handleInputChange('vehicle', value);
+              checkAvailability('vehicle', value);
+            }}
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
               errors.vehicle ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
             }`}
@@ -398,7 +576,12 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           )}
           {availableVehicles.length === 0 && !vehiclesLoading && (
             <p className="mt-1 text-sm text-yellow-600">
-              No available vehicles found. Only vehicles with &quot;assigned&quot; or &quot;idle&quot; status are available for trips.
+              No available vehicles found. Only vehicles with &quot;idle&quot; status are available for new trips.
+            </p>
+          )}
+          {availableVehicles.length > 0 && (
+            <p className="mt-1 text-sm text-gray-500">
+              Vehicles currently in use are disabled and cannot be selected.
             </p>
           )}
         </div>

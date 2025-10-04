@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useStaff } from '@/store/hooks/useStaff';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Staff, StaffUpdateRequest } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface StaffEditFormProps {
   staff: Staff;
@@ -58,16 +59,19 @@ export default function StaffEditForm({ staff, onSuccess, onCancel }: StaffEditF
     e.preventDefault();
 
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
     try {
       const result = await updateStaff(staff.documentId, formData);
       if (result) {
+        showSuccessToast(`Staff member "${result.fullName}" updated successfully!`);
         onSuccess(result);
       }
     } catch (error) {
       console.error('Error updating staff member:', error);
+      showErrorToast(error);
     }
   };
 

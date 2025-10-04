@@ -201,7 +201,6 @@ export default function ExpensePage() {
               >
                 <option value="">All Types</option>
                 <option value="debit">Debit</option>
-                <option value="credit">Credit</option>
               </select>
             </div>
 

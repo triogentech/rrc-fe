@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useStaff } from '@/store/hooks/useStaff';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { StaffCreateRequest, Staff } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface StaffCreateFormProps {
   onSuccess: (staff: Staff) => void;
@@ -128,16 +129,19 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
     e.preventDefault();
 
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
     try {
       const result = await createStaff(formData);
       if (result) {
+        showSuccessToast(`Staff member "${result.fullName}" created successfully!`);
         onSuccess(result);
       }
     } catch (error) {
       console.error('Error creating staff member:', error);
+      showErrorToast(error);
     }
   };
 

@@ -6,6 +6,7 @@ import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Trip, TripUpdateRequest, LogisticsProvider } from '@/store/api/types';
 import { TripStatus } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface TripEditFormProps {
   trip: Trip;
@@ -33,7 +34,7 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
     vehicle: typeof trip.vehicle === 'string' ? trip.vehicle : trip.vehicle?.documentId,
     logisticsProvider: typeof trip.logisticsProvider === 'string' ? trip.logisticsProvider : trip.logisticsProvider?.documentId,
     // Custom fields
-    cstmCreatedBy: trip.cstmCreatedBy,
+    cstmCreatedBy: typeof trip.cstmCreatedBy === 'string' ? trip.cstmCreatedBy : trip.cstmCreatedBy?.documentId,
     cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
@@ -101,7 +102,7 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
       vehicle: typeof trip.vehicle === 'string' ? trip.vehicle : trip.vehicle?.documentId,
       logisticsProvider: typeof trip.logisticsProvider === 'string' ? trip.logisticsProvider : trip.logisticsProvider?.documentId,
       // Custom fields
-      cstmCreatedBy: trip.cstmCreatedBy,
+      cstmCreatedBy: typeof trip.cstmCreatedBy === 'string' ? trip.cstmCreatedBy : trip.cstmCreatedBy?.documentId,
       cstmUpdatedBy: user?.documentId || user?.id || '',
     });
   }, [trip, user]);
@@ -137,17 +138,19 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
     try {
       const updatedTrip = await updateTrip(trip.documentId, formData);
       if (updatedTrip) {
+        showSuccessToast(`Trip "${updatedTrip.tripNumber}" updated successfully!`);
         onSuccess(updatedTrip);
       }
     } catch (err) {
       console.error('Failed to update trip:', err);
-      // Error is already handled by the thunk and set in Redux state
+      showErrorToast(err);
     }
   };
 

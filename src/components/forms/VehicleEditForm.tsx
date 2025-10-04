@@ -4,6 +4,7 @@ import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Vehicle, VehicleUpdateRequest } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface VehicleEditFormProps {
   vehicle: Vehicle;
@@ -102,6 +103,7 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
     e.preventDefault();
     
     if (!validateForm()) {
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
@@ -128,10 +130,12 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
       
       if (updatedVehicle) {
         console.log('Vehicle updated successfully:', updatedVehicle);
+        showSuccessToast(`Vehicle "${updatedVehicle.vehicleNumber}" updated successfully!`);
         onSuccess?.(updatedVehicle);
       }
     } catch (error) {
       console.error('Error updating vehicle:', error);
+      showErrorToast(error);
     }
   };
 

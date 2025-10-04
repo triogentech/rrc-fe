@@ -4,6 +4,7 @@ import { useDrivers } from '@/store/hooks/useDrivers';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import { useAadhaarValidation } from '@/hooks/useAadhaarValidation';
 import type { DriverCreateRequest, Driver } from '@/store/api/types';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
 interface DriverCreateFormProps {
   onSuccess?: (driver: Driver) => void;
@@ -172,6 +173,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
     e.preventDefault();
     
     if (!validateStep(currentStep)) { // Validate the current (last) step before submission
+      showErrorToast('Please fill in all required fields correctly');
       return;
     }
 
@@ -210,6 +212,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
 
       const newDriver = await createDriver(cleanedData);
       if (newDriver) {
+        showSuccessToast(`Driver "${newDriver.fullName}" created successfully!`);
         onSuccess?.(newDriver);
         // Reset form
         setFormData({
@@ -240,6 +243,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
       }
     } catch (error) {
       console.error('Failed to create driver:', error);
+      showErrorToast(error);
     }
   };
 
