@@ -4,14 +4,7 @@
  * request/response interceptors, and authentication
  */
 
-// API Configuration
-export const API_CONFIG = {
-  baseURL: 'http://localhost:1340/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-} as const;
+import { API_CONFIG } from '@/config/api';
 
 console.log('API_CONFIG loaded:', API_CONFIG);
 

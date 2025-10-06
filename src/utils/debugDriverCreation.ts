@@ -3,12 +3,15 @@
  * Use this to test driver creation with different data formats
  */
 
-export const testDriverCreation = async (driverData: any) => {
+import { getApiBaseUrl } from '@/config/api';
+
+export const testDriverCreation = async (driverData: Record<string, unknown>) => {
   console.log('=== Testing Driver Creation ===');
   console.log('Data being sent:', driverData);
   
   try {
-    const response = await fetch('http://localhost:1340/api/drivers', {
+    const apiUrl = getApiBaseUrl();
+    const response = await fetch(`${apiUrl}/drivers`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,7 +43,7 @@ export const testDriverCreation = async (driverData: any) => {
   }
 };
 
-export const testDriverCreationWithStrapiFormat = async (driverData: any) => {
+export const testDriverCreationWithStrapiFormat = async (driverData: Record<string, unknown>) => {
   // Strapi often expects data wrapped in a 'data' object
   const strapiData = {
     data: driverData
@@ -69,7 +72,13 @@ export const testDriverCreationWithValidation = async () => {
 
 // Make functions available globally in development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as any).testDriverCreation = testDriverCreation;
-  (window as any).testDriverCreationWithStrapiFormat = testDriverCreationWithStrapiFormat;
-  (window as any).testDriverCreationWithValidation = testDriverCreationWithValidation;
+  const globalWindow = window as unknown as {
+    testDriverCreation?: typeof testDriverCreation;
+    testDriverCreationWithStrapiFormat?: typeof testDriverCreationWithStrapiFormat;
+    testDriverCreationWithValidation?: typeof testDriverCreationWithValidation;
+  };
+  
+  globalWindow.testDriverCreation = testDriverCreation;
+  globalWindow.testDriverCreationWithStrapiFormat = testDriverCreationWithStrapiFormat;
+  globalWindow.testDriverCreationWithValidation = testDriverCreationWithValidation;
 }

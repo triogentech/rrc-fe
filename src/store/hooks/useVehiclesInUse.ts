@@ -16,14 +16,15 @@ import {
   getVehiclesInUseCountThunk,
 } from '../thunks/vehiclesInUseThunks';
 import type { Vehicle } from '../api/types';
+import type { RootState } from '../store';
 
 // Selectors
-export const selectVehiclesInUse = (state: any) => state.vehiclesInUse.vehicles;
-export const selectCurrentVehicleInUse = (state: any) => state.vehiclesInUse.currentVehicle;
-export const selectVehiclesInUseLoading = (state: any) => state.vehiclesInUse.isLoading;
-export const selectVehiclesInUseError = (state: any) => state.vehiclesInUse.error;
-export const selectVehiclesInUsePagination = (state: any) => state.vehiclesInUse.pagination;
-export const selectVehiclesInUseFilters = (state: any) => state.vehiclesInUse.filters;
+export const selectVehiclesInUse = (state: RootState) => state.vehiclesInUse.vehicles;
+export const selectCurrentVehicleInUse = (state: RootState) => state.vehiclesInUse.currentVehicle;
+export const selectVehiclesInUseLoading = (state: RootState) => state.vehiclesInUse.isLoading;
+export const selectVehiclesInUseError = (state: RootState) => state.vehiclesInUse.error;
+export const selectVehiclesInUsePagination = (state: RootState) => state.vehiclesInUse.pagination;
+export const selectVehiclesInUseFilters = (state: RootState) => state.vehiclesInUse.filters;
 
 // Custom hook for vehicles in use management
 export const useVehiclesInUse = () => {

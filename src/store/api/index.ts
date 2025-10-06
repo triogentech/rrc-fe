@@ -5,7 +5,9 @@
 
 // Base API
 export { BaseApi, api, get, post, put, patch, del } from './baseApi';
-export { API_CONFIG } from './baseApi';
+
+// Configuration
+export { API_CONFIG, getApiBaseUrl } from '@/config/api';
 
 // Types
 export * from './types';
@@ -29,7 +31,7 @@ export type {
   User,
   UserRole,
   Vehicle,
-  VehicleStatus,
+  VehicleCurrentStatus,
   Trip,
   TripStatus,
   Expense,

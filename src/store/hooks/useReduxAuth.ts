@@ -133,7 +133,7 @@ export const useReduxAuth = () => {
   const hasRole = useCallback((role: string): boolean => {
     if (!user) return false;
     // Implement role checking logic based on your user structure
-    return user.role === role;
+    return user.role?.name === role;
   }, [user]);
 
   // Get session duration

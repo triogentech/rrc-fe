@@ -4,6 +4,7 @@
  */
 
 import { api } from './baseApi';
+import { getApiBaseUrl } from '@/config/api';
 import type {
   User,
   UserRole,
@@ -45,7 +46,8 @@ export const authService = {
     
     // Try with absolute URL first
     try {
-      const response = await fetch('http://localhost:1340/api/auth/local', {
+      const apiUrl = getApiBaseUrl();
+      const response = await fetch(`${apiUrl}/auth/local`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +197,7 @@ export const vehicleService = {
    * Toggle vehicle active status
    */
   toggleVehicleStatus: (id: string) =>
-    api.patch(`/api/vehicles/${id}/toggle-status`),
+    api.patch<Vehicle>(`/api/vehicles/${id}/toggle-status`),
 
   /**
    * Search vehicles

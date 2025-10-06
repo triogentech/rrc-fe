@@ -47,8 +47,9 @@ export const useUser = () => {
   }, [currentUser]);
 
   const getUserAvatar = useCallback(() => {
-    return currentUser?.avatar || '/images/user/owner.jpg';
-  }, [currentUser]);
+    // User interface doesn't have avatar property, return default
+    return '/images/user/owner.jpg';
+  }, []);
 
   const isUserActive = useCallback(() => {
     return currentUser?.confirmed && !currentUser?.blocked;

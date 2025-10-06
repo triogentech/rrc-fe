@@ -143,10 +143,6 @@ export const useVehicles = () => {
   // Get vehicle status display name
   const getVehicleStatusDisplayName = useCallback((status: VehicleCurrentStatus | string): string => {
     const statusMap: Record<string, string> = {
-      'choose_here': 'Choose here',
-      'idle': 'Idle',
-      'assigned': 'Assigned',
-      'ongoing': 'Ongoing',
       [VehicleCurrentStatus.CHOOSE_HERE]: 'Choose here',
       [VehicleCurrentStatus.IDLE]: 'Idle',
       [VehicleCurrentStatus.ASSIGNED]: 'Assigned',
@@ -158,10 +154,6 @@ export const useVehicles = () => {
   // Get vehicle status color
   const getVehicleStatusColor = useCallback((status: VehicleCurrentStatus | string): string => {
     const colorMap: Record<string, string> = {
-      'choose_here': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-      'idle': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-      'assigned': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'ongoing': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       [VehicleCurrentStatus.CHOOSE_HERE]: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
       [VehicleCurrentStatus.IDLE]: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
       [VehicleCurrentStatus.ASSIGNED]: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',

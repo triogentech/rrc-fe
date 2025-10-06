@@ -6,7 +6,7 @@ import {
   getVehiclesInUseCount,
   getVehiclesInUseWithFilters 
 } from '@/utils/vehicleInUse';
-import type { Vehicle, StrapiResponse } from '../api/types';
+// Vehicle type is not directly used in this file
 
 // Fetch vehicles in use
 export const getVehiclesInUseThunk = createAsyncThunk(

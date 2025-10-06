@@ -3,6 +3,7 @@ import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import authReducer from './slices/authSlice';
 import driversReducer from './slices/driversSlice';
 import vehiclesReducer from './slices/vehiclesSlice';
+import vehiclesInUseReducer from './slices/vehiclesInUseSlice';
 import staffReducer from './slices/staffSlice';
 import tripsReducer from './slices/tripsSlice';
 import userReducer from './slices/userSlice';
@@ -13,6 +14,7 @@ export const store = configureStore({
     auth: authReducer,
     drivers: driversReducer,
     vehicles: vehiclesReducer,
+    vehiclesInUse: vehiclesInUseReducer,
     staff: staffReducer,
     trips: tripsReducer,
     user: userReducer,

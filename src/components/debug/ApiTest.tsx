@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { authService } from '@/store/api/services';
+import { getApiBaseUrl } from '@/config/api';
 
 export default function ApiTest() {
   const [result, setResult] = useState<string>('');
@@ -11,7 +12,8 @@ export default function ApiTest() {
     setResult('Testing...');
     
     try {
-      console.log('Making API call to:', 'http://localhost:1340/api/auth/local');
+      const apiUrl = getApiBaseUrl();
+      console.log('Making API call to:', `${apiUrl}/auth/local`);
       
       const response = await authService.login({
         identifier: "7838624872",
@@ -33,7 +35,8 @@ export default function ApiTest() {
     setResult('Testing direct fetch...');
     
     try {
-      const response = await fetch('http://localhost:1340/api/auth/local', {
+      const apiUrl = getApiBaseUrl();
+      const response = await fetch(`${apiUrl}/auth/local`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

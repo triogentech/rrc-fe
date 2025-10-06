@@ -84,16 +84,16 @@ export const useTrips = () => {
   // Filter Actions
   const setTripsFilters = useCallback((newFilters: Partial<typeof filters>) => {
     dispatch(setFilters(newFilters));
-  }, [dispatch, setFilters]);
+  }, [dispatch]);
 
   const clearTripsFilters = useCallback(() => {
     dispatch(clearFilters());
-  }, [dispatch, clearFilters]);
+  }, [dispatch]);
 
   // Error Actions
   const clearTripsError = useCallback(() => {
     dispatch(clearError());
-  }, [dispatch, clearError]);
+  }, [dispatch]);
 
   // Utility functions
   const getTripDisplayName = useCallback((trip: Trip): string => {

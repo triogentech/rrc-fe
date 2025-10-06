@@ -13,10 +13,8 @@ export default function UserInfoCard() {
     currentUser,
     isLoading,
     getCurrentUser,
-    getUserDisplayName,
     getUserEmail,
     getUserRole,
-    clearUserError,
   } = useUser();
 
   // Fetch user data on component mount

@@ -135,7 +135,7 @@ const vehiclesSlice = createSlice({
     },
 
     // Reset state
-    resetVehiclesState: (state) => {
+    resetVehiclesState: () => {
       return initialState;
     },
   },

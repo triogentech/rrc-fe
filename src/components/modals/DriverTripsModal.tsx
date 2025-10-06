@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Modal } from '../ui/modal';
 import Button from '../ui/button/Button';
 import type { Driver, Trip } from '@/store/api/types';
@@ -15,14 +15,7 @@ export default function DriverTripsModal({ isOpen, onClose, driver }: DriverTrip
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch trips when modal opens
-  useEffect(() => {
-    if (isOpen && driver) {
-      fetchDriverTrips();
-    }
-  }, [isOpen, driver]);
-
-  const fetchDriverTrips = async () => {
+  const fetchDriverTrips = useCallback(async () => {
     if (!driver) return;
 
     setIsLoading(true);
@@ -41,7 +34,14 @@ export default function DriverTripsModal({ isOpen, onClose, driver }: DriverTrip
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [driver]);
+
+  // Fetch trips when modal opens
+  useEffect(() => {
+    if (isOpen && driver) {
+      fetchDriverTrips();
+    }
+  }, [isOpen, driver, fetchDriverTrips]);
 
   const formatTripDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

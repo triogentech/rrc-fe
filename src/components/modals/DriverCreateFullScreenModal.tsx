@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import DriverCreateForm from '../forms/DriverCreateForm';
 import type { Driver } from '@/store/api/types';
 
@@ -10,6 +10,13 @@ interface DriverCreateFullScreenModalProps {
 }
 
 export default function DriverCreateFullScreenModal({ isOpen, onClose, onSuccess }: DriverCreateFullScreenModalProps) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3; // Assuming 3 steps for driver creation
+
+  const handleStepChange = (step: number) => {
+    setCurrentStep(step);
+  };
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +61,9 @@ export default function DriverCreateFullScreenModal({ isOpen, onClose, onSuccess
             <DriverCreateForm 
               onSuccess={handleSuccess}
               onCancel={onClose}
+              currentStep={currentStep}
+              onStepChange={handleStepChange}
+              totalSteps={totalSteps}
             />
           </div>
         </div>

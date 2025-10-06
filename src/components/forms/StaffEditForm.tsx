@@ -20,7 +20,7 @@ export default function StaffEditForm({ staff, onSuccess, onCancel }: StaffEditF
     countryDialCode: staff.countryDialCode,
     contactNumber: staff.contactNumber,
     // Custom fields
-    cstmCreatedBy: staff.cstmCreatedBy,
+    cstmCreatedBy: typeof staff.cstmCreatedBy === 'string' ? staff.cstmCreatedBy : staff.cstmCreatedBy?.documentId,
     cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 

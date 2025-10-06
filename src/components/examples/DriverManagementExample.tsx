@@ -23,7 +23,7 @@ export default function DriverManagementExample() {
       {/* Your existing driver list/content goes here */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <p className="text-gray-600 dark:text-gray-400">
-          Click "Add New Driver" to open the driver creation form.
+          Click &quot;Add New Driver&quot; to open the driver creation form.
         </p>
       </div>
 

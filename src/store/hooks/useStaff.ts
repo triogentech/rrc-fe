@@ -85,7 +85,7 @@ export const useStaff = () => {
 
   const setStaffFilters = useCallback((newFilters: Partial<typeof filters>) => {
     dispatch(setFilters(newFilters));
-  }, [dispatch, filters]);
+  }, [dispatch]);
 
   const clearStaffFilters = useCallback(() => {
     dispatch(clearFilters());
@@ -100,15 +100,19 @@ export const useStaff = () => {
     return staff.fullName || 'Unknown Staff';
   }, []);
 
-  const getStaffContactInfo = useCallback((staff: Staff): string => {
-    return `${staff.countryDialCode} ${staff.contactNumber}`;
+  const getStaffContactInfo = useCallback((staffMember: Staff): string => {
+    return `${staffMember.countryDialCode} ${staffMember.contactNumber}`;
   }, []);
 
-  const getStaffEmergencyContact = useCallback((staff: Staff): string => {
+  const getStaffEmergencyContact = useCallback((staffMember: Staff): string => {
+    // Parameter required by interface but not used in implementation
+    void staffMember;
     return 'N/A'; // Staff doesn't have emergency contact in the current API
   }, []);
 
-  const isStaffActive = useCallback((staff: Staff): boolean => {
+  const isStaffActive = useCallback((staffMember: Staff): boolean => {
+    // Parameter required by interface but not used in implementation
+    void staffMember;
     return true; // All staff are considered active in the current API
   }, []);
 

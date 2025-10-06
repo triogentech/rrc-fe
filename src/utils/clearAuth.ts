@@ -37,6 +37,11 @@ export const resetAppState = (): void => {
 
 // Make functions available globally in development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as any).clearAuth = clearAllAuthData;
-  (window as any).resetApp = resetAppState;
+  const globalWindow = window as unknown as {
+    clearAuth?: typeof clearAllAuthData;
+    resetApp?: typeof resetAppState;
+  };
+  
+  globalWindow.clearAuth = clearAllAuthData;
+  globalWindow.resetApp = resetAppState;
 }

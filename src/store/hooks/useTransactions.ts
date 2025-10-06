@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { transactionService } from '../api/services';
-import type { Transaction, TransactionCreateRequest, TransactionUpdateRequest, StrapiResponse } from '../api/types';
+import type { Transaction, TransactionCreateRequest, TransactionUpdateRequest } from '../api/types';
 
 interface UseTransactionsOptions {
   autoFetch?: boolean;
@@ -43,13 +43,13 @@ export const useTransactions = (options: UseTransactionsOptions = {}) => {
         ...params,
       });
       
-      if (response.data && Array.isArray(response.data)) {
-        setTransactions(response.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setTransactions(response.data.data);
         setPagination({
-          page: response.meta?.pagination?.page || 1,
-          pageSize: response.meta?.pagination?.pageSize || pageSize,
-          pageCount: response.meta?.pagination?.pageCount || 0,
-          total: response.meta?.pagination?.total || 0,
+          page: response.data.meta?.pagination?.page || 1,
+          pageSize: response.data.meta?.pagination?.pageSize || pageSize,
+          pageCount: response.data.meta?.pagination?.pageCount || 0,
+          total: response.data.meta?.pagination?.total || 0,
         });
       }
     } catch (err) {

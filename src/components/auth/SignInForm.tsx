@@ -36,7 +36,7 @@ export default function SignInForm() {
         setTimeout(() => {
           // Check user role after successful login
           if (user) {
-            const userRole = user.role || 'Unknown';
+            const userRole = user.role?.name || 'Unknown';
             
             // Check if user has valid role for admin access
             // Allow admin and manager roles, deny user and driver roles

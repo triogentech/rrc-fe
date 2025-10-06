@@ -3,6 +3,8 @@
  * Use these functions in the browser console to test authentication flows
  */
 
+import { getApiBaseUrl } from '@/config/api';
+
 export const testAuthFlow = () => {
   console.log('=== Testing Authentication Flow ===');
   
@@ -14,7 +16,7 @@ export const testAuthFlow = () => {
   console.log('LocalStorage User:', userData ? JSON.parse(userData) : 'None');
   
   // Check Redux state (if available)
-  if (typeof window !== 'undefined' && (window as any).__REDUX_DEVTOOLS_EXTENSION__) {
+  if (typeof window !== 'undefined' && (window as unknown as { __REDUX_DEVTOOLS_EXTENSION__?: unknown }).__REDUX_DEVTOOLS_EXTENSION__) {
     console.log('Redux DevTools available - check Redux state for auth details');
   }
   
@@ -26,7 +28,8 @@ export const testApiCall = async () => {
   console.log('=== Testing API Call ===');
   
   try {
-    const response = await fetch('http://localhost:1340/api/drivers', {
+    const apiUrl = getApiBaseUrl();
+    const response = await fetch(`${apiUrl}/drivers`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -81,8 +84,15 @@ export const clearAllAuth = () => {
 
 // Make functions available globally in development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as any).testAuth = testAuthFlow;
-  (window as any).testApi = testApiCall;
-  (window as any).simulateExpiry = simulateTokenExpiry;
-  (window as any).clearAll = clearAllAuth;
+  const globalWindow = window as unknown as {
+    testAuth?: typeof testAuthFlow;
+    testApi?: typeof testApiCall;
+    simulateExpiry?: typeof simulateTokenExpiry;
+    clearAll?: typeof clearAllAuth;
+  };
+  
+  globalWindow.testAuth = testAuthFlow;
+  globalWindow.testApi = testApiCall;
+  globalWindow.simulateExpiry = simulateTokenExpiry;
+  globalWindow.clearAll = clearAllAuth;
 }

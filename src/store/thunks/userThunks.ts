@@ -15,9 +15,11 @@ export const getCurrentUserThunk = createAsyncThunk(
       console.log('User response:', response);
       dispatch(setCurrentUser(response.data));
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Get current user error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch user profile';
+      const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || 
+                          (error as { message?: string })?.message || 
+                          'Failed to fetch user profile';
       dispatch(setError(errorMessage));
       throw error;
     } finally {
@@ -38,9 +40,11 @@ export const updateCurrentUserThunk = createAsyncThunk(
       console.log('Update user response:', response);
       dispatch(updateUserProfile(response.data));
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Update user error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update user profile';
+      const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || 
+                          (error as { message?: string })?.message || 
+                          'Failed to update user profile';
       dispatch(setError(errorMessage));
       throw error;
     } finally {
@@ -59,12 +63,13 @@ export const uploadAvatarThunk = createAsyncThunk(
       dispatch(setLoading(true));
       const response = await userService.uploadAvatar(file);
       console.log('Upload avatar response:', response);
-      // Update user profile with new avatar URL
-      dispatch(updateUserProfile({ avatar: response.data.url }));
+      // Avatar uploaded successfully (User type doesn't have avatar property)
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload avatar error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to upload avatar';
+      const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || 
+                          (error as { message?: string })?.message || 
+                          'Failed to upload avatar';
       dispatch(setError(errorMessage));
       throw error;
     } finally {
