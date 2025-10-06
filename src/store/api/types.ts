@@ -10,6 +10,14 @@ export interface ApiResponse<T = unknown> {
   success: boolean;
   status: number;
   timestamp?: string;
+  meta?: {
+    pagination?: {
+      page: number;
+      pageSize: number;
+      pageCount: number;
+      total: number;
+    };
+  };
 }
 
 // Pagination

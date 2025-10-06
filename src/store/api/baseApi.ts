@@ -170,7 +170,8 @@ export class BaseApi {
       message: data.message,
       success: true,
       status: response.status,
-    };
+      meta: data.meta,
+    } as ApiResponse<T>;
   }
 
   /**

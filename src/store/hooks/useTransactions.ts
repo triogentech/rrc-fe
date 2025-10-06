@@ -43,13 +43,15 @@ export const useTransactions = (options: UseTransactionsOptions = {}) => {
         ...params,
       });
       
-      if (response.data && Array.isArray(response.data.data)) {
-        setTransactions(response.data.data);
+      if (response.data && Array.isArray(response.data)) {
+        setTransactions(response.data);
+        // Type assertion to access meta property
+        const responseWithMeta = response as typeof response & { meta?: { pagination?: { page: number; pageSize: number; pageCount: number; total: number } } };
         setPagination({
-          page: response.data.meta?.pagination?.page || 1,
-          pageSize: response.data.meta?.pagination?.pageSize || pageSize,
-          pageCount: response.data.meta?.pagination?.pageCount || 0,
-          total: response.data.meta?.pagination?.total || 0,
+          page: responseWithMeta.meta?.pagination?.page || 1,
+          pageSize: responseWithMeta.meta?.pagination?.pageSize || pageSize,
+          pageCount: responseWithMeta.meta?.pagination?.pageCount || 0,
+          total: responseWithMeta.meta?.pagination?.total || 0,
         });
       }
     } catch (err) {
