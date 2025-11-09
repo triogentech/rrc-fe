@@ -836,3 +836,83 @@ span.flatpickr-weekday,
   opacity: 0.8;
   cursor: grabbing; /* Changes the cursor to indicate dragging */
 }
+
+/* React DatePicker Styles */
+.react-datepicker-wrapper {
+  @apply w-full;
+}
+
+.react-datepicker-popper {
+  @apply z-9999!;
+}
+
+.react-datepicker {
+  @apply !bg-white !rounded-xl !p-5 !border !border-gray-200 dark:!border-gray-800 !text-gray-500 dark:!bg-gray-dark dark:!text-gray-400 dark:!shadow-theme-xl;
+  font-family: 'Outfit', sans-serif !important;
+}
+
+.react-datepicker__header {
+  @apply !bg-transparent !border-b-0 !pt-0 !pb-4;
+}
+
+.react-datepicker__current-month {
+  @apply !text-lg !font-medium !text-gray-800 dark:!text-white/90 !pb-4;
+}
+
+.react-datepicker__day-names {
+  @apply !mb-0;
+}
+
+.react-datepicker__day-name {
+  @apply !text-theme-sm !font-medium !text-gray-500 dark:!text-gray-400 !w-10 !leading-10;
+}
+
+.react-datepicker__month {
+  @apply !m-0;
+}
+
+.react-datepicker__day {
+  @apply !text-theme-sm !font-medium !text-gray-800 dark:!text-white/90 !w-10 !leading-10 !m-0 hover:!bg-gray-50 dark:hover:!bg-gray-900 !rounded-lg;
+}
+
+.react-datepicker__day--disabled {
+  @apply !text-gray-400 dark:!text-gray-600 !cursor-not-allowed;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  @apply !bg-brand-500 !text-white dark:!text-white hover:!bg-brand-600 !rounded-lg;
+}
+
+.react-datepicker__day--today {
+  @apply !bg-gray-100 dark:!bg-gray-800 !font-bold !rounded-lg;
+}
+
+.react-datepicker__day--outside-month {
+  @apply !text-gray-400 dark:!text-gray-600;
+}
+
+.react-datepicker__navigation {
+  @apply !top-5;
+}
+
+.react-datepicker__navigation--previous {
+  @apply !left-5;
+}
+
+.react-datepicker__navigation--next {
+  @apply !right-5;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply !border-gray-500 dark:!border-gray-400 hover:!border-brand-500 dark:hover:!border-brand-500;
+}
+
+.react-datepicker__triangle {
+  @apply !hidden;
+}
+
+/* Input styling - make sure it works with wrapper */
+.react-datepicker__input-container input {
+  @apply w-full;
+}

@@ -1,12 +1,12 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { VehicleCreateRequest, Vehicle } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
-import flatpickr from 'flatpickr';
-import 'flatpickr/dist/flatpickr.css';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { CalenderIcon } from '@/icons';
 
 interface VehicleCreateFormProps {
@@ -58,35 +58,21 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
     }));
   }, []);
 
-  // Initialize flatpickr for date fields
-  useEffect(() => {
-    const dateFields = [
-      'registrationDate',
-      'fitnessDate',
-      'insuranceDate',
-      'taxDueDate',
-      'permitDate',
-      'puccDate',
-      'npValidUpto'
-    ];
+  // Helper function to parse date from string
+  const parseDate = (dateString: string): Date | null => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? null : date;
+  };
 
-    const pickers = dateFields.map((field) => {
-      return flatpickr(`#${field}`, {
-        dateFormat: "Y-m-d",
-        onChange: (selectedDates, dateStr) => {
-          handleInputChange(field as keyof VehicleCreateRequest, dateStr);
-        },
-      });
-    });
-
-    return () => {
-      pickers.forEach((picker) => {
-        if (picker && !Array.isArray(picker)) {
-          picker.destroy();
-        }
-      });
-    };
-  }, [handleInputChange]);
+  // Helper function to format date for form data
+  const formatDateForStorage = (date: Date | null): string => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<VehicleCreateRequest> = {};
@@ -364,16 +350,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             Registration Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="registrationDate"
-              value={formData.registrationDate}
-              readOnly
-              placeholder="Select registration date"
+            <DatePicker
+              selected={parseDate(formData.registrationDate)}
+              onChange={(date) => handleInputChange('registrationDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select registration date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.registrationDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -390,16 +376,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             Fitness Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="fitnessDate"
-              value={formData.fitnessDate}
-              readOnly
-              placeholder="Select fitness date"
+            <DatePicker
+              selected={parseDate(formData.fitnessDate)}
+              onChange={(date) => handleInputChange('fitnessDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select fitness date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.fitnessDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -416,16 +402,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             Insurance Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="insuranceDate"
-              value={formData.insuranceDate}
-              readOnly
-              placeholder="Select insurance date"
+            <DatePicker
+              selected={parseDate(formData.insuranceDate)}
+              onChange={(date) => handleInputChange('insuranceDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select insurance date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.insuranceDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -442,16 +428,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             Tax Due Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="taxDueDate"
-              value={formData.taxDueDate}
-              readOnly
-              placeholder="Select tax due date"
+            <DatePicker
+              selected={parseDate(formData.taxDueDate)}
+              onChange={(date) => handleInputChange('taxDueDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select tax due date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.taxDueDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -468,16 +454,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             Permit Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="permitDate"
-              value={formData.permitDate}
-              readOnly
-              placeholder="Select permit date"
+            <DatePicker
+              selected={parseDate(formData.permitDate)}
+              onChange={(date) => handleInputChange('permitDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select permit date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.permitDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -494,16 +480,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             PUCC Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="puccDate"
-              value={formData.puccDate}
-              readOnly
-              placeholder="Select PUCC date"
+            <DatePicker
+              selected={parseDate(formData.puccDate)}
+              onChange={(date) => handleInputChange('puccDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select PUCC date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.puccDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -520,16 +506,16 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
             NP Valid Upto <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="npValidUpto"
-              value={formData.npValidUpto}
-              readOnly
-              placeholder="Select NP valid upto date"
+            <DatePicker
+              selected={parseDate(formData.npValidUpto)}
+              onChange={(date) => handleInputChange('npValidUpto', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select NP valid upto date"
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.npValidUpto ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
