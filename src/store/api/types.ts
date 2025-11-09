@@ -118,9 +118,20 @@ export interface Vehicle extends BaseEntity {
   engineNumber?: string;
   chassisNumber?: string;
   typeOfVehicleAxle?: string;
+  // Mandatory date fields
+  registrationDate?: string;
+  fitnessDate?: string;
+  insuranceDate?: string;
+  taxDueDate?: string;
+  permitDate?: string;
+  puccDate?: string;
+  npValidUpto?: string;
   cstmCreatedBy?: string | User;
   cstmUpdatedBy?: string | User | User[];
   trips?: string[];
+  garageLogs?: string[];
+  tyreLogs?: string[];
+  lastUpdatedBy?: string | User | null;
 }
 
 export enum VehicleType {
@@ -150,6 +161,14 @@ export interface VehicleCreateRequest {
   engineNumber: string;
   chassisNumber: string;
   typeOfVehicleAxle: string;
+  // Mandatory date fields
+  registrationDate: string;
+  fitnessDate: string;
+  insuranceDate: string;
+  taxDueDate: string;
+  permitDate: string;
+  puccDate: string;
+  npValidUpto: string;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
   trips?: string[];
@@ -282,14 +301,16 @@ export interface Driver extends BaseEntity {
   emergencyContactName?: string;
   emergencyContactRelation?: string;
   // New fields
-  drivingLicenceNumber?: string;
-  accountHolderName?: string;
-  accountNumber?: string;
-  branchName?: string;
-  ifscCode?: string;
-  accountType?: string;
+  currentStatus?: string | null;
+  drivingLicenceNumber?: string | null;
+  accountHolderName?: string | null;
+  accountNumber?: string | null;
+  branchName?: string | null;
+  ifscCode?: string | null;
+  accountType?: string | null;
   cstmCreatedBy?: string | User;
   cstmUpdatedBy?: string | User | User[];
+  lastUpdatedBy?: string | User | null;
   user?: User;
   trips?: Trip[];
 }
@@ -311,6 +332,7 @@ export interface DriverCreateRequest {
   emergencyContactName?: string;
   emergencyContactRelation?: string;
   // New fields
+  currentStatus?: string;
   drivingLicenceNumber?: string;
   accountHolderName?: string;
   accountNumber?: string;
@@ -398,6 +420,12 @@ export interface LogisticsProviderUpdateRequest extends Partial<LogisticsProvide
   id?: string;
 }
 
+// Touching Location type
+export interface TouchingLocation {
+  id?: number;
+  name: string;
+}
+
 // Trip related types
 export interface Trip extends BaseEntity {
   documentId: string;
@@ -420,6 +448,8 @@ export interface Trip extends BaseEntity {
   totalTripTimeInMinutes?: number | null;
   freightTotalAmount?: number | null;
   advanceAmount?: number | null;
+  isTouchingLocationAvailable?: boolean;
+  touchingLocations?: TouchingLocation[];
   // Relations
   driver?: string | Driver;
   vehicle?: string | Vehicle;
@@ -454,6 +484,8 @@ export interface TripCreateRequest {
   totalTripTimeInMinutes?: number | null;
   freightTotalAmount?: number | null;
   advanceAmount?: number | null;
+  isTouchingLocationAvailable?: boolean;
+  touchingLocations?: TouchingLocation[];
 }
 
 export interface TripUpdateRequest extends Partial<TripCreateRequest> {
@@ -558,4 +590,84 @@ export interface TransactionCreateRequest {
 
 export interface TransactionUpdateRequest extends Partial<TransactionCreateRequest> {
   id?: string;
+}
+
+// City related types
+export interface FuelStation extends BaseEntity {
+  documentId: string;
+  name: string;
+  publishedAt: string;
+  isActive: boolean;
+  city?: string | City | null;
+  fuelLogs?: unknown[];
+  cstmCreatedBy?: string | User | null;
+  cstmUpdatedBy?: string | User | User[] | null;
+  lastUpdatedBy?: string | User | null;
+}
+
+export interface Garage extends BaseEntity {
+  documentId: string;
+  name: string;
+  publishedAt: string;
+  isActive: boolean;
+  city?: string | City | null;
+  garageLogs?: unknown[];
+  cstmCreatedBy?: string | User | null;
+  cstmUpdatedBy?: string | User | User[] | null;
+  lastUpdatedBy?: string | User | null;
+}
+
+export interface LoadProvider {
+  id: number;
+  documentId: string;
+  name: string;
+  shortName?: string;
+  isActive: boolean;
+  contactNumber?: string;
+  countryDialCode?: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+}
+
+export interface City extends BaseEntity {
+  documentId: string;
+  name: string;
+  cityCode: string;
+  state: string;
+  stateCode: string;
+  country: string;
+  countryISOCode: string;
+  publishedAt: string;
+  fuelStations?: FuelStation[];
+  garages?: Garage[];
+  loadProviders?: LoadProvider[];
+  cstmCreatedBy?: string | User;
+  cstmUpdatedBy?: string | User | User[];
+  lastUpdatedBy?: string | User | null;
+}
+
+// Log related types
+export interface FuelLog extends BaseEntity {
+  documentId: string;
+  publishedAt: string;
+  [key: string]: unknown;
+}
+
+export interface GarageLog extends BaseEntity {
+  documentId: string;
+  publishedAt: string;
+  [key: string]: unknown;
+}
+
+export interface TollLog extends BaseEntity {
+  documentId: string;
+  publishedAt: string;
+  [key: string]: unknown;
+}
+
+export interface TyreLog extends BaseEntity {
+  documentId: string;
+  publishedAt: string;
+  [key: string]: unknown;
 }

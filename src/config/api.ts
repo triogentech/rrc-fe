@@ -16,7 +16,7 @@ export const getApiBaseUrl = (): string => {
 
 // Get development API base URL
 export const getDevApiBaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_DEV_API_BASE_URL || 'http://localhost:1340/api';
+  return process.env.NEXT_PUBLIC_DEV_API_BASE_URL || 'http://15.206.221.189/api';
 };
 
 // Current API configuration

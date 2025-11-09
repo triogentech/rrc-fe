@@ -40,7 +40,7 @@ interface ErrorLike {
  * Default toast configuration with dark blue theme
  */
 const defaultToastConfig: ToastOptions = {
-  position: "top-right",
+  position: "bottom-right",
   autoClose: 5000,
   hideProgressBar: false,
   closeOnClick: true,

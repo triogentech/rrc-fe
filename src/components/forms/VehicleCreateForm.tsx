@@ -1,10 +1,13 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { VehicleCreateRequest, Vehicle } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.css';
+import { CalenderIcon } from '@/icons';
 
 interface VehicleCreateFormProps {
   onSuccess?: (vehicle: Vehicle) => void;
@@ -26,6 +29,14 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
     engineNumber: '',
     chassisNumber: '',
     typeOfVehicleAxle: '',
+    // Mandatory date fields
+    registrationDate: '',
+    fitnessDate: '',
+    insuranceDate: '',
+    taxDueDate: '',
+    permitDate: '',
+    puccDate: '',
+    npValidUpto: '',
     // Custom fields
     cstmCreatedBy: user?.documentId || user?.id || '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -33,20 +44,49 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
 
   const [errors, setErrors] = useState<Partial<VehicleCreateRequest>>({});
 
-  const handleInputChange = (field: keyof VehicleCreateRequest, value: string | boolean) => {
+  // Handle input changes with useCallback to prevent unnecessary re-renders
+  const handleInputChange = useCallback((field: keyof VehicleCreateRequest, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     
     // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
-  };
+    setErrors(prev => ({
+      ...prev,
+      [field]: undefined
+    }));
+  }, []);
+
+  // Initialize flatpickr for date fields
+  useEffect(() => {
+    const dateFields = [
+      'registrationDate',
+      'fitnessDate',
+      'insuranceDate',
+      'taxDueDate',
+      'permitDate',
+      'puccDate',
+      'npValidUpto'
+    ];
+
+    const pickers = dateFields.map((field) => {
+      return flatpickr(`#${field}`, {
+        dateFormat: "Y-m-d",
+        onChange: (selectedDates, dateStr) => {
+          handleInputChange(field as keyof VehicleCreateRequest, dateStr);
+        },
+      });
+    });
+
+    return () => {
+      pickers.forEach((picker) => {
+        if (picker && !Array.isArray(picker)) {
+          picker.destroy();
+        }
+      });
+    };
+  }, [handleInputChange]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<VehicleCreateRequest> = {};
@@ -75,6 +115,34 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
       newErrors.typeOfVehicleAxle = 'Type of vehicle axle is required';
     }
 
+    if (!formData.registrationDate.trim()) {
+      newErrors.registrationDate = 'Registration date is required';
+    }
+
+    if (!formData.fitnessDate.trim()) {
+      newErrors.fitnessDate = 'Fitness date is required';
+    }
+
+    if (!formData.insuranceDate.trim()) {
+      newErrors.insuranceDate = 'Insurance date is required';
+    }
+
+    if (!formData.taxDueDate.trim()) {
+      newErrors.taxDueDate = 'Tax due date is required';
+    }
+
+    if (!formData.permitDate.trim()) {
+      newErrors.permitDate = 'Permit date is required';
+    }
+
+    if (!formData.puccDate.trim()) {
+      newErrors.puccDate = 'PUCC date is required';
+    }
+
+    if (!formData.npValidUpto.trim()) {
+      newErrors.npValidUpto = 'NP valid upto date is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -89,33 +157,51 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
 
     try {
       // Clean and prepare data for API
-      const cleanedData = {
+      const cleanedData: VehicleCreateRequest = {
         vehicleNumber: formData.vehicleNumber.trim(),
         model: formData.model.trim(),
         type: formData.type,
         currentStatus: formData.currentStatus,
         isActive: formData.isActive,
-        // New mandatory fields
-        odometerReading: formData.odometerReading.trim(),
+        // New mandatory fields - only include if not empty
+        odometerReading: formData.odometerReading.trim() || '0',
         engineNumber: formData.engineNumber.trim(),
         chassisNumber: formData.chassisNumber.trim(),
         typeOfVehicleAxle: formData.typeOfVehicleAxle.trim(),
-        // Custom fields
-        cstmCreatedBy: formData.cstmCreatedBy,
-        cstmUpdatedBy: formData.cstmUpdatedBy,
+        // Mandatory date fields
+        registrationDate: formData.registrationDate.trim(),
+        fitnessDate: formData.fitnessDate.trim(),
+        insuranceDate: formData.insuranceDate.trim(),
+        taxDueDate: formData.taxDueDate.trim(),
+        permitDate: formData.permitDate.trim(),
+        puccDate: formData.puccDate.trim(),
+        npValidUpto: formData.npValidUpto.trim(),
       };
 
-      console.log('Submitting vehicle data:', cleanedData);
+      // Only add custom fields if they exist
+      if (formData.cstmCreatedBy) {
+        cleanedData.cstmCreatedBy = formData.cstmCreatedBy;
+      }
+      if (formData.cstmUpdatedBy) {
+        cleanedData.cstmUpdatedBy = formData.cstmUpdatedBy;
+      }
+
+      console.log('Submitting vehicle data:', JSON.stringify(cleanedData, null, 2));
       
-      const vehicle = await createVehicle(cleanedData as VehicleCreateRequest);
+      const vehicle = await createVehicle(cleanedData);
       
       if (vehicle) {
         console.log('Vehicle created successfully:', vehicle);
         showSuccessToast(`Vehicle "${vehicle.vehicleNumber}" created successfully!`);
         onSuccess?.(vehicle);
+      } else {
+        showErrorToast('Failed to create vehicle. Please check all required fields.');
       }
     } catch (error) {
       console.error('Error creating vehicle:', error);
+      if (error && typeof error === 'object') {
+        console.error('Error details:', JSON.stringify(error, null, 2));
+      }
       showErrorToast(error);
     }
   };
@@ -269,6 +355,188 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
           </select>
           {errors.typeOfVehicleAxle && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.typeOfVehicleAxle}</p>
+          )}
+        </div>
+
+        {/* Registration Date */}
+        <div>
+          <label htmlFor="registrationDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Registration Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="registrationDate"
+              value={formData.registrationDate}
+              readOnly
+              placeholder="Select registration date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.registrationDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.registrationDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.registrationDate}</p>
+          )}
+        </div>
+
+        {/* Fitness Date */}
+        <div>
+          <label htmlFor="fitnessDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Fitness Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="fitnessDate"
+              value={formData.fitnessDate}
+              readOnly
+              placeholder="Select fitness date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.fitnessDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.fitnessDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fitnessDate}</p>
+          )}
+        </div>
+
+        {/* Insurance Date */}
+        <div>
+          <label htmlFor="insuranceDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Insurance Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="insuranceDate"
+              value={formData.insuranceDate}
+              readOnly
+              placeholder="Select insurance date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.insuranceDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.insuranceDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.insuranceDate}</p>
+          )}
+        </div>
+
+        {/* Tax Due Date */}
+        <div>
+          <label htmlFor="taxDueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Tax Due Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="taxDueDate"
+              value={formData.taxDueDate}
+              readOnly
+              placeholder="Select tax due date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.taxDueDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.taxDueDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.taxDueDate}</p>
+          )}
+        </div>
+
+        {/* Permit Date */}
+        <div>
+          <label htmlFor="permitDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Permit Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="permitDate"
+              value={formData.permitDate}
+              readOnly
+              placeholder="Select permit date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.permitDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.permitDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.permitDate}</p>
+          )}
+        </div>
+
+        {/* PUCC Date */}
+        <div>
+          <label htmlFor="puccDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            PUCC Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="puccDate"
+              value={formData.puccDate}
+              readOnly
+              placeholder="Select PUCC date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.puccDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.puccDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.puccDate}</p>
+          )}
+        </div>
+
+        {/* NP Valid Upto */}
+        <div>
+          <label htmlFor="npValidUpto" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            NP Valid Upto <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="npValidUpto"
+              value={formData.npValidUpto}
+              readOnly
+              placeholder="Select NP valid upto date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.npValidUpto ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.npValidUpto && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.npValidUpto}</p>
           )}
         </div>
 

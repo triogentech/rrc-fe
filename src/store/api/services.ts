@@ -32,6 +32,14 @@ import type {
   UploadResponse,
   Notification,
   StrapiResponse,
+  City,
+  Garage,
+  FuelStation,
+  FuelLog,
+  GarageLog,
+  TollLog,
+  TyreLog,
+  LoadProvider,
 } from './types';
 
 /**
@@ -705,6 +713,279 @@ export const tripService = {
 };
 
 /**
+ * City Service
+ */
+export const cityService = {
+  /**
+   * Get all cities with populated relations
+   */
+  getCities: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add search parameter for name field
+    if (search) {
+      queryParams['filters[name][$containsi]'] = search;
+    }
+
+    console.log('City service: Getting cities with params:', params);
+    console.log('City service: Query params:', queryParams);
+    return api.get<StrapiResponse<City>>('/api/cities', queryParams);
+  },
+
+  /**
+   * Get city by ID
+   */
+  getCity: (id: string) =>
+    api.get<City>(`/api/cities/${id}`, {
+      populate: '*',
+    }),
+
+  /**
+   * Create city
+   */
+  createCity: (data: { name: string; cityCode?: string; state?: string; stateCode?: string; country?: string; countryISOCode?: string }) => {
+    const strapiData = { data };
+    return api.post<City>('/api/cities', strapiData);
+  },
+
+  /**
+   * Update city
+   */
+  updateCity: (id: string, data: Partial<City>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<City>(`/api/cities/${id}`, strapiData);
+  },
+
+  /**
+   * Delete city
+   */
+  deleteCity: (id: string) =>
+    api.delete(`/api/cities/${id}`),
+};
+
+/**
+ * Garage Service
+ */
+export const garageService = {
+  /**
+   * Get all garages with populated relations
+   */
+  getGarages: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add search parameter for name field
+    if (search) {
+      queryParams['filters[name][$containsi]'] = search;
+    }
+
+    console.log('Garage service: Getting garages with params:', params);
+    console.log('Garage service: Query params:', queryParams);
+    return api.get<StrapiResponse<Garage>>('/api/garages', queryParams);
+  },
+
+  /**
+   * Get garage by ID
+   */
+  getGarage: (id: string) =>
+    api.get<Garage>(`/api/garages/${id}`, {
+      populate: '*',
+    }),
+
+  /**
+   * Create garage
+   */
+  createGarage: (data: { name: string; isActive?: boolean; city?: string }) => {
+    const strapiData = { data };
+    return api.post<Garage>('/api/garages', strapiData);
+  },
+
+  /**
+   * Update garage
+   */
+  updateGarage: (id: string, data: Partial<Garage>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<Garage>(`/api/garages/${id}`, strapiData);
+  },
+
+  /**
+   * Delete garage
+   */
+  deleteGarage: (id: string) =>
+    api.delete(`/api/garages/${id}`),
+};
+
+/**
+ * Fuel Station Service
+ */
+export const fuelStationService = {
+  /**
+   * Get all fuel stations with populated relations
+   */
+  getFuelStations: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add search parameter for name field
+    if (search) {
+      queryParams['filters[name][$containsi]'] = search;
+    }
+
+    console.log('Fuel Station service: Getting fuel stations with params:', params);
+    console.log('Fuel Station service: Query params:', queryParams);
+    return api.get<StrapiResponse<FuelStation>>('/api/fuel-stations', queryParams);
+  },
+
+  /**
+   * Get fuel station by ID
+   */
+  getFuelStation: (id: string) =>
+    api.get<FuelStation>(`/api/fuel-stations/${id}`, {
+      populate: '*',
+    }),
+
+  /**
+   * Create fuel station
+   */
+  createFuelStation: (data: { name: string; isActive?: boolean; city?: string }) => {
+    const strapiData = { data };
+    return api.post<FuelStation>('/api/fuel-stations', strapiData);
+  },
+
+  /**
+   * Update fuel station
+   */
+  updateFuelStation: (id: string, data: Partial<FuelStation>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<FuelStation>(`/api/fuel-stations/${id}`, strapiData);
+  },
+
+  /**
+   * Delete fuel station
+   */
+  deleteFuelStation: (id: string) =>
+    api.delete(`/api/fuel-stations/${id}`),
+};
+
+/**
+ * Load Provider Service
+ */
+export const loadProviderService = {
+  /**
+   * Get all load providers
+   */
+  getLoadProviders: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add search parameter if provided
+    if (search) {
+      queryParams.search = search;
+    }
+
+    console.log('LoadProvider service: Getting load providers with params:', params);
+    console.log('LoadProvider service: Query params:', queryParams);
+    return api.get<StrapiResponse<LoadProvider>>('/api/load-providers', queryParams);
+  },
+
+  /**
+   * Get single load provider
+   */
+  getLoadProvider: (id: string) => 
+    api.get<LoadProvider>(`/api/load-providers/${id}`, {
+      populate: ['city', 'trips', 'cstmCreatedBy', 'cstmUpdatedBy', 'lastUpdatedBy']
+    }),
+
+  /**
+   * Create load provider
+   */
+  createLoadProvider: (data: Record<string, unknown>) => {
+    console.log('LoadProvider service: Creating load provider with data:', data);
+    const strapiData = { data };
+    console.log('LoadProvider service: Sending to API:', strapiData);
+    return api.post<LoadProvider>('/api/load-providers', strapiData);
+  },
+
+  /**
+   * Update load provider
+   */
+  updateLoadProvider: (id: string, data: Partial<LoadProvider> | Record<string, unknown>) => {
+    console.log('LoadProvider service: Updating load provider with ID:', id);
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<LoadProvider>(`/api/load-providers/${id}`, strapiData);
+  },
+
+  /**
+   * Delete load provider
+   */
+  deleteLoadProvider: (id: string) => {
+    console.log('LoadProvider service: Deleting load provider with ID:', id);
+    return api.delete(`/api/load-providers/${id}`);
+  },
+};
+
+/**
  * Search Service
  */
 export const searchService = {
@@ -753,9 +1034,19 @@ export const roleService = {
    * Get role by name
    */
   getRoleByName: async (roleName: string) => {
-    const response = await api.get<UserRole[]>('/api/users-permissions/roles');
-    const roles = response.data;
-    return roles.find(role => role.name === roleName);
+    console.log('Role service: Fetching all roles...');
+    try {
+      const response = await api.get<UserRole[]>('/api/users-permissions/roles');
+      console.log('Role service: API response:', response);
+      const roles = response.data;
+      console.log('Role service: Available roles:', roles);
+      const foundRole = roles.find(role => role.name === roleName);
+      console.log(`Role service: Looking for "${roleName}", found:`, foundRole);
+      return foundRole;
+    } catch (error) {
+      console.error('Role service: Error fetching roles:', error);
+      throw error;
+    }
   },
 };
 
@@ -785,15 +1076,22 @@ export const userService = {
     
     if (userData.role) {
       try {
+        console.log('User service: Looking for role:', userData.role);
         const role = await roleService.getRoleByName(userData.role);
+        console.log('User service: Found role:', role);
         if (role) {
           roleId = role.id;
+          console.log('User service: Using role ID:', roleId);
+        } else {
+          console.warn(`User service: Role "${userData.role}" not found, using default role ID 1`);
         }
       } catch (error) {
-        console.warn('Failed to fetch role, using default role ID:', error);
+        console.error('User service: Failed to fetch role:', error);
+        console.warn('User service: Using default role ID 1 (Authenticated)');
       }
     }
 
+    // Try different payload structures for Strapi v4
     const payload = {
       username: userData.username,
       email: userData.email,
@@ -802,7 +1100,29 @@ export const userService = {
       blocked: userData.blocked ?? false,
       role: roleId,
     };
-    return api.post<User>('/api/users', payload);
+    
+    console.log('User service: Creating user with payload:', payload);
+    
+    try {
+      return await api.post<User>('/api/users', payload);
+    } catch (error) {
+      console.error('User service: First attempt failed, trying alternative payload structure:', error);
+      
+      // Alternative approach: try with role as object reference
+      const alternativePayload = {
+        username: userData.username,
+        email: userData.email,
+        password: userData.password,
+        confirmed: userData.confirmed ?? true,
+        blocked: userData.blocked ?? false,
+        role: {
+          connect: [roleId]
+        },
+      };
+      
+      console.log('User service: Trying alternative payload:', alternativePayload);
+      return await api.post<User>('/api/users', alternativePayload);
+    }
   },
 
   /**
@@ -891,4 +1211,260 @@ export const transactionService = {
    */
   deleteTransaction: (id: string) =>
     api.delete(`/api/transactions/${id}`),
+};
+
+/**
+ * Fuel Log Service
+ */
+export const fuelLogService = {
+  /**
+   * Get all fuel logs
+   */
+  getFuelLogs: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    if (search) {
+      queryParams['filters[$or]'] = [
+        { description: { $containsi: search } },
+        { notes: { $containsi: search } }
+      ];
+    }
+
+    return api.get<StrapiResponse<FuelLog>>('/api/fuel-logs', queryParams);
+  },
+
+  /**
+   * Get fuel log by ID
+   */
+  getFuelLog: (id: string) =>
+    api.get<FuelLog>(`/api/fuel-logs/${id}`, { populate: '*' }),
+
+  /**
+   * Create fuel log
+   */
+  createFuelLog: (data: Record<string, unknown>) => {
+    const strapiData = { data };
+    return api.post<FuelLog>('/api/fuel-logs', strapiData);
+  },
+
+  /**
+   * Update fuel log
+   */
+  updateFuelLog: (id: string, data: Partial<FuelLog>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<FuelLog>(`/api/fuel-logs/${id}`, strapiData);
+  },
+
+  /**
+   * Delete fuel log
+   */
+  deleteFuelLog: (id: string) =>
+    api.delete(`/api/fuel-logs/${id}`),
+};
+
+/**
+ * Garage Log Service
+ */
+export const garageLogService = {
+  /**
+   * Get all garage logs
+   */
+  getGarageLogs: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    if (search) {
+      queryParams['filters[$or]'] = [
+        { description: { $containsi: search } },
+        { notes: { $containsi: search } }
+      ];
+    }
+
+    return api.get<StrapiResponse<GarageLog>>('/api/garage-logs', queryParams);
+  },
+
+  /**
+   * Get garage log by ID
+   */
+  getGarageLog: (id: string) =>
+    api.get<GarageLog>(`/api/garage-logs/${id}`, { populate: '*' }),
+
+  /**
+   * Create garage log
+   */
+  createGarageLog: (data: Record<string, unknown>) => {
+    const strapiData = { data };
+    return api.post<GarageLog>('/api/garage-logs', strapiData);
+  },
+
+  /**
+   * Update garage log
+   */
+  updateGarageLog: (id: string, data: Partial<GarageLog>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<GarageLog>(`/api/garage-logs/${id}`, strapiData);
+  },
+
+  /**
+   * Delete garage log
+   */
+  deleteGarageLog: (id: string) =>
+    api.delete(`/api/garage-logs/${id}`),
+};
+
+/**
+ * Toll Log Service
+ */
+export const tollLogService = {
+  /**
+   * Get all toll logs
+   */
+  getTollLogs: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    if (search) {
+      queryParams['filters[$or]'] = [
+        { description: { $containsi: search } },
+        { notes: { $containsi: search } }
+      ];
+    }
+
+    return api.get<StrapiResponse<TollLog>>('/api/toll-logs', queryParams);
+  },
+
+  /**
+   * Get toll log by ID
+   */
+  getTollLog: (id: string) =>
+    api.get<TollLog>(`/api/toll-logs/${id}`, { populate: '*' }),
+
+  /**
+   * Create toll log
+   */
+  createTollLog: (data: Record<string, unknown>) => {
+    const strapiData = { data };
+    return api.post<TollLog>('/api/toll-logs', strapiData);
+  },
+
+  /**
+   * Update toll log
+   */
+  updateTollLog: (id: string, data: Partial<TollLog>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<TollLog>(`/api/toll-logs/${id}`, strapiData);
+  },
+
+  /**
+   * Delete toll log
+   */
+  deleteTollLog: (id: string) =>
+    api.delete(`/api/toll-logs/${id}`),
+};
+
+/**
+ * Tyre Log Service
+ */
+export const tyreLogService = {
+  /**
+   * Get all tyre logs
+   */
+  getTyreLogs: (params?: PaginationParams & { search?: string }) => {
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    if (search) {
+      queryParams['filters[$or]'] = [
+        { description: { $containsi: search } },
+        { notes: { $containsi: search } }
+      ];
+    }
+
+    return api.get<StrapiResponse<TyreLog>>('/api/tyre-logs', queryParams);
+  },
+
+  /**
+   * Get tyre log by ID
+   */
+  getTyreLog: (id: string) =>
+    api.get<TyreLog>(`/api/tyre-logs/${id}`, { populate: '*' }),
+
+  /**
+   * Create tyre log
+   */
+  createTyreLog: (data: Record<string, unknown>) => {
+    const strapiData = { data };
+    return api.post<TyreLog>('/api/tyre-logs', strapiData);
+  },
+
+  /**
+   * Update tyre log
+   */
+  updateTyreLog: (id: string, data: Partial<TyreLog>) => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    const strapiData = { data: cleanedData };
+    return api.put<TyreLog>(`/api/tyre-logs/${id}`, strapiData);
+  },
+
+  /**
+   * Delete tyre log
+   */
+  deleteTyreLog: (id: string) =>
+    api.delete(`/api/tyre-logs/${id}`),
 };

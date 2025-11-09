@@ -1,12 +1,21 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTrips } from '@/store/hooks/useTrips';
 import { useDrivers } from '@/store/hooks/useDrivers';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
+import { loadProviderService } from '@/store/api/services';
 import type { TripCreateRequest, Trip, Vehicle, Driver } from '@/store/api/types';
 import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
+
+interface LoadProvider {
+  id: number;
+  documentId: string;
+  name: string;
+  shortName?: string;
+  isActive: boolean;
+}
 
 interface TripCreateFormProps {
   onSuccess: (trip: Trip) => void;
@@ -19,7 +28,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   const { vehicles, getVehicles, isLoading: vehiclesLoading, updateVehicle } = useVehicles();
   const { user } = useReduxAuth();
 
-  const [formData, setFormData] = useState<TripCreateRequest>({
+  const [formData, setFormData] = useState<TripCreateRequest & { loadProvider?: string }>({
     tripNumber: '',
     estimatedStartTime: '',
     estimatedEndTime: '',
@@ -29,10 +38,13 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     currentStatus: 'created' as TripStatus,
     driver: undefined,
     vehicle: undefined,
+    loadProvider: undefined,
     // New fields
     freightTotalAmount: 0,
     advanceAmount: 0,
     totalTripTimeInMinutes: 0,
+    isTouchingLocationAvailable: false,
+    touchingLocations: [],
     // Custom fields
     cstmCreatedBy: user?.documentId || user?.id || '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -42,6 +54,8 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   const [totalTripTimeInHours, setTotalTripTimeInHours] = useState<number>(0);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loadProviders, setLoadProviders] = useState<LoadProvider[]>([]);
+  const [isLoadingLoadProviders, setIsLoadingLoadProviders] = useState(false);
 
   // Calculate estimatedEndTime and totalTripTimeInMinutes when totalTripTimeInHours or estimatedStartTime changes
   useEffect(() => {
@@ -61,14 +75,31 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
   const [driversInUse, setDriversInUse] = useState<Set<string>>(new Set());
 
+  // Fetch load providers
+  const fetchLoadProviders = useCallback(async () => {
+    setIsLoadingLoadProviders(true);
+    try {
+      const response = await loadProviderService.getLoadProviders({ page: 1, limit: 100 });
+      const providers = Array.isArray(response.data) ? response.data : [];
+      // Filter only active load providers
+      const activeProviders = providers.filter((provider: LoadProvider) => provider.isActive);
+      setLoadProviders(activeProviders);
+    } catch (error) {
+      console.error('Error fetching load providers:', error);
+    } finally {
+      setIsLoadingLoadProviders(false);
+    }
+  }, []);
+
   // Fetch data when component mounts
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch drivers and vehicles
+        // Fetch drivers, vehicles, and load providers
         await Promise.all([
           getDrivers(),
-          getVehicles()
+          getVehicles(),
+          fetchLoadProviders()
         ]);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -76,7 +107,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     };
 
     fetchData();
-  }, [getDrivers, getVehicles]);
+  }, [getDrivers, getVehicles, fetchLoadProviders]);
 
   // Process vehicles when they change
   useEffect(() => {
@@ -155,7 +186,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }
   }, [drivers]);
 
-  const handleInputChange = (field: keyof TripCreateRequest, value: string | number | null) => {
+  const handleInputChange = (field: keyof (TripCreateRequest & { loadProvider?: string }), value: string | number | boolean | null | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -163,6 +194,30 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     if (apiError) {
       clearTripsError();
     }
+  };
+
+  // Handler for touching locations
+  const addTouchingLocation = () => {
+    setFormData(prev => ({
+      ...prev,
+      touchingLocations: [...(prev.touchingLocations || []), { name: '' }]
+    }));
+  };
+
+  const removeTouchingLocation = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      touchingLocations: (prev.touchingLocations || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateTouchingLocation = (index: number, name: string) => {
+    setFormData(prev => ({
+      ...prev,
+      touchingLocations: (prev.touchingLocations || []).map((loc, i) => 
+        i === index ? { ...loc, name } : loc
+      )
+    }));
   };
 
   // Check if driver or vehicle is available for real-time validation
@@ -239,6 +294,19 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       newErrors.vehicle = 'Selected vehicle is currently in use';
     }
     
+    // Validate touching locations if enabled
+    if (formData.isTouchingLocationAvailable) {
+      if (!formData.touchingLocations || formData.touchingLocations.length === 0) {
+        newErrors.touchingLocations = 'Please add at least one touching location';
+      } else {
+        // Check if all touching locations have names
+        const hasEmptyLocations = formData.touchingLocations.some(loc => !loc.name || loc.name.trim() === '');
+        if (hasEmptyLocations) {
+          newErrors.touchingLocations = 'All touching locations must have a name';
+        }
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -270,7 +338,27 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }
 
     try {
-      const newTrip = await createTrip(formData);
+      // Prepare the data for submission
+      const submitData: TripCreateRequest & { loadProvider?: string } = { ...formData };
+      
+      // Clean up touching locations: trim names and filter out empty ones
+      if (submitData.isTouchingLocationAvailable && submitData.touchingLocations) {
+        submitData.touchingLocations = submitData.touchingLocations
+          .map(loc => ({ ...loc, name: loc.name.trim() }))
+          .filter(loc => loc.name !== '');
+      } else {
+        // If touching locations not available, ensure it's an empty array or undefined
+        submitData.touchingLocations = [];
+      }
+      
+      // Only include loadProvider if it's selected
+      if (!submitData.loadProvider) {
+        delete submitData.loadProvider;
+      }
+      
+      console.log('Creating trip with data:', submitData);
+      
+      const newTrip = await createTrip(submitData);
       if (newTrip) {
         // Update vehicle status to "assigned" after successful trip creation
         if (formData.vehicle) {
@@ -482,6 +570,33 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           {errors.advanceAmount && <p className="mt-1 text-sm text-red-600">{errors.advanceAmount}</p>}
         </div>
 
+        {/* Is Touching Location Available */}
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="isTouchingLocationAvailable"
+            checked={formData.isTouchingLocationAvailable || false}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setFormData(prev => ({
+                ...prev,
+                isTouchingLocationAvailable: checked,
+                // Clear touching locations when unchecked
+                touchingLocations: checked ? prev.touchingLocations || [] : []
+              }));
+              // Clear any errors
+              if (errors.touchingLocations) {
+                setErrors(prev => ({ ...prev, touchingLocations: '' }));
+              }
+            }}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            disabled={isLoading}
+          />
+          <label htmlFor="isTouchingLocationAvailable" className="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Touching Locations Available
+          </label>
+        </div>
+
         {/* Driver Selection */}
         <div>
           <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -586,9 +701,92 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           )}
         </div>
 
-
-
+        {/* Load Provider Selection */}
+        <div>
+          <label htmlFor="loadProvider" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Load Provider
+          </label>
+          <select
+            id="loadProvider"
+            value={formData.loadProvider || ''}
+            onChange={(e) => {
+              const value = e.target.value || undefined;
+              handleInputChange('loadProvider', value);
+            }}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading || isLoadingLoadProviders}
+          >
+            <option value="">Select a load provider (Optional)</option>
+            {loadProviders.map((provider) => (
+              <option 
+                key={provider.documentId} 
+                value={provider.documentId}
+              >
+                {provider.name}{provider.shortName ? ` (${provider.shortName})` : ''}
+              </option>
+            ))}
+          </select>
+          {isLoadingLoadProviders && (
+            <p className="mt-1 text-sm text-gray-500">Loading load providers...</p>
+          )}
+          {loadProviders.length === 0 && !isLoadingLoadProviders && (
+            <p className="mt-1 text-sm text-gray-500">No active load providers available</p>
+          )}
+        </div>
       </div>
+
+      {/* Touching Locations Section */}
+      {formData.isTouchingLocationAvailable && (
+        <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-md font-semibold text-gray-900 dark:text-white">Touching Locations</h4>
+            <button
+              type="button"
+              onClick={addTouchingLocation}
+              disabled={isLoading}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              + Add Location
+            </button>
+          </div>
+          
+          {formData.touchingLocations && formData.touchingLocations.length > 0 ? (
+            <div className="space-y-3">
+              {formData.touchingLocations.map((location, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={location.name || ''}
+                    onChange={(e) => {
+                      updateTouchingLocation(index, e.target.value);
+                      // Clear error when user starts typing
+                      if (errors.touchingLocations) {
+                        setErrors(prev => ({ ...prev, touchingLocations: '' }));
+                      }
+                    }}
+                    placeholder={`Location ${index + 1} name`}
+                    className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                      errors.touchingLocations ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeTouchingLocation(index)}
+                    disabled={isLoading}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">No touching locations added. Click &quot;Add Location&quot; to add one.</p>
+          )}
+          {errors.touchingLocations && <p className="mt-2 text-sm text-red-600">{errors.touchingLocations}</p>}
+        </div>
+      )}
 
       <div className="flex justify-end space-x-3 mt-6">
         <button

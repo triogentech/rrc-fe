@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTransactions } from '@/store/hooks/useTransactions';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import { useTrips } from '@/store/hooks/useTrips';
-import { generateSimplifiedTransactionDetails, generateTransactionId, generateRRN, validateTransactionDetails, getPaymentMethodConfig, getDefaultPaymentValues, validatePaymentFields } from '@/utils/transactionDetails';
+import { generateSimplifiedTransactionDetails, generateTransactionId } from '@/utils/transactionDetails';
 import type { TransactionCreateRequest, Transaction } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
@@ -17,7 +17,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
   const { user } = useReduxAuth();
   const { trips, isLoading: loadingTrips, getTrips } = useTrips();
 
-  const [formData, setFormData] = useState<TransactionCreateRequest>({
+  const [formData, setFormData] = useState<TransactionCreateRequest & { txnTowards?: string }>({
     transactionId: '', // Will be auto-generated on submit
     type: 'debit',
     amount: 0,
@@ -26,32 +26,18 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     currency: 'INR',
     method: 'upi',
     trip: '',
+    txnTowards: '',
   });
 
-  const [transactionDetails, setTransactionDetails] = useState({
-    rrn: generateRRN(),
-  });
-
-  const [paymentFields, setPaymentFields] = useState<Record<string, string>>({});
-  const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
+  const [fromAccount, setFromAccount] = useState('');
+  const [toAccount, setToAccount] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [transactionFromJson, setTransactionFromJson] = useState('');
   const [transactionToJson, setTransactionToJson] = useState('');
 
-  // Separate state for Transaction To fields
-  const [transactionToDetails, setTransactionToDetails] = useState({
-    contact: '+919818222176',
-    email: 'void@razorpay.com',
-    vpa: 'deeproganguly-1@okaxis',
-    rrn: generateRRN(),
-  });
-
-  const [transactionToPaymentFields, setTransactionToPaymentFields] = useState<Record<string, string>>({});
-  const [transactionToPaymentErrors, setTransactionToPaymentErrors] = useState<Record<string, string>>({});
-
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 2;
 
   // Fetch trips for selection
   useEffect(() => {
@@ -66,62 +52,23 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     fetchTrips();
   }, [getTrips]);
 
-  // Update payment fields when method changes
+  // Generate Transaction From JSON when from account changes
   useEffect(() => {
-    const defaultValues = getDefaultPaymentValues(formData.method);
-    setPaymentFields(defaultValues);
-    setPaymentErrors({});
-    
-    // Also update transactionTo payment fields
-    setTransactionToPaymentFields(defaultValues);
-    setTransactionToPaymentErrors({});
-  }, [formData.method]);
-
-  // Generate Transaction From JSON when form data changes
-  useEffect(() => {
-    const details = {
-      id: formData.transactionId || generateTransactionId(),
-      amount: formData.amount,
-      currency: formData.currency,
-      method: formData.method,
-      status: formData.transactionStatus,
-      description: formData.description,
-      contact: '+919818222176',
-      email: 'void@razorpay.com',
-      vpa: paymentFields.vpa || 'deeproganguly-1@okaxis',
-      rrn: transactionDetails.rrn,
-    };
-
-    const validation = validateTransactionDetails(details);
-    if (validation.isValid) {
-      const jsonString = generateSimplifiedTransactionDetails(details);
+    if (fromAccount) {
+      const jsonString = generateSimplifiedTransactionDetails(fromAccount);
       setTransactionFromJson(jsonString);
     }
-  }, [formData, transactionDetails, paymentFields]);
+  }, [fromAccount]);
 
-  // Generate Transaction To JSON when transactionTo data changes
+  // Generate Transaction To JSON when to account changes
   useEffect(() => {
-    const details = {
-      id: formData.transactionId || generateTransactionId(),
-      amount: formData.amount,
-      currency: formData.currency,
-      method: formData.method,
-      status: formData.transactionStatus,
-      description: formData.description,
-      contact: transactionToDetails.contact,
-      email: transactionToDetails.email,
-      vpa: transactionToPaymentFields.vpa || transactionToDetails.vpa,
-      rrn: transactionToDetails.rrn,
-    };
-
-    const validation = validateTransactionDetails(details);
-    if (validation.isValid) {
-      const jsonString = generateSimplifiedTransactionDetails(details);
+    if (toAccount) {
+      const jsonString = generateSimplifiedTransactionDetails(toAccount);
       setTransactionToJson(jsonString);
     }
-  }, [formData, transactionToDetails, transactionToPaymentFields]);
+  }, [toAccount]);
 
-  const handleInputChange = (field: keyof TransactionCreateRequest, value: string | number) => {
+  const handleInputChange = (field: keyof (TransactionCreateRequest & { txnTowards?: string }), value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -138,42 +85,6 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
   };
 
 
-  const handlePaymentFieldChange = (field: string, value: string) => {
-    setPaymentFields(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (paymentErrors[field]) {
-      setPaymentErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-  };
-
-  const handleTransactionToDetailsChange = (field: keyof typeof transactionToDetails, value: string) => {
-    setTransactionToDetails(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleTransactionToPaymentFieldChange = (field: string, value: string) => {
-    setTransactionToPaymentFields(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (transactionToPaymentErrors[field]) {
-      setTransactionToPaymentErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-  };
 
   // Step navigation functions
   const nextStep = () => {
@@ -188,11 +99,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     }
   };
 
-  const goToStep = (step: number) => {
-    if (step >= 1 && step <= totalSteps) {
-      setCurrentStep(step);
-    }
-  };
+
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
@@ -204,11 +111,16 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     prevStep();
   };
 
+  // Helper function to count digits in account number
+  const countDigits = (accountNumber: string): number => {
+    return (accountNumber.match(/\d/g) || []).length;
+  };
+
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
 
     switch (step) {
-      case 1: // Basic Transaction Details
+      case 1: // Basic Transaction Details & Account Details
         if (!formData.amount || formData.amount <= 0) {
           newErrors.amount = 'Amount must be greater than 0';
         }
@@ -218,29 +130,28 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
         if (!formData.currency.trim()) {
           newErrors.currency = 'Currency is required';
         }
-        break;
-      
-      case 2: // Transaction From Details
-        const paymentValidation = validatePaymentFields(formData.method, paymentFields);
-        if (!paymentValidation.isValid) {
-          setPaymentErrors(paymentValidation.errors);
-          return false;
+        if (!fromAccount.trim()) {
+          newErrors.fromAccount = 'From Account is required';
         } else {
-          setPaymentErrors({});
+          const fromAccountDigits = countDigits(fromAccount);
+          if (fromAccountDigits > 18) {
+            newErrors.fromAccount = 'Account number cannot exceed 18 digits';
+          }
+        }
+        if (!toAccount.trim()) {
+          newErrors.toAccount = 'To Account is required';
+        } else {
+          const toAccountDigits = countDigits(toAccount);
+          if (toAccountDigits > 18) {
+            newErrors.toAccount = 'Account number cannot exceed 18 digits';
+          }
+        }
+        if (!formData.txnTowards || !formData.txnTowards.trim()) {
+          newErrors.txnTowards = 'Transaction For is required';
         }
         break;
       
-      case 3: // Transaction To Details
-        const transactionToPaymentValidation = validatePaymentFields(formData.method, transactionToPaymentFields);
-        if (!transactionToPaymentValidation.isValid) {
-          setTransactionToPaymentErrors(transactionToPaymentValidation.errors);
-          return false;
-        } else {
-          setTransactionToPaymentErrors({});
-        }
-        break;
-      
-      case 4: // Review
+      case 2: // Review
         // All validations from previous steps
         return validateForm();
     }
@@ -261,25 +172,28 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     if (!formData.currency.trim()) {
       newErrors.currency = 'Currency is required';
     }
-
-    // Validate payment method specific fields for Transaction From
-    const paymentValidation = validatePaymentFields(formData.method, paymentFields);
-    if (!paymentValidation.isValid) {
-      setPaymentErrors(paymentValidation.errors);
+    if (!fromAccount.trim()) {
+      newErrors.fromAccount = 'From Account is required';
     } else {
-      setPaymentErrors({});
+      const fromAccountDigits = countDigits(fromAccount);
+      if (fromAccountDigits > 18) {
+        newErrors.fromAccount = 'Account number cannot exceed 18 digits';
+      }
     }
-
-    // Validate payment method specific fields for Transaction To
-    const transactionToPaymentValidation = validatePaymentFields(formData.method, transactionToPaymentFields);
-    if (!transactionToPaymentValidation.isValid) {
-      setTransactionToPaymentErrors(transactionToPaymentValidation.errors);
+    if (!toAccount.trim()) {
+      newErrors.toAccount = 'To Account is required';
     } else {
-      setTransactionToPaymentErrors({});
+      const toAccountDigits = countDigits(toAccount);
+      if (toAccountDigits > 18) {
+        newErrors.toAccount = 'Account number cannot exceed 18 digits';
+      }
+    }
+    if (!formData.txnTowards || !formData.txnTowards.trim()) {
+      newErrors.txnTowards = 'Transaction For is required';
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0 && paymentValidation.isValid && transactionToPaymentValidation.isValid;
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -295,7 +209,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
       const generatedTransactionId = generateTransactionId();
       
       // Create the transaction with JSON details
-      const transactionData: TransactionCreateRequest & { transactionFrom?: string; transactionTo?: string } = {
+      const transactionData: TransactionCreateRequest & { transactionFrom?: string; transactionTo?: string; txnTowards?: string } = {
         transactionId: generatedTransactionId,
         type: formData.type,
         amount: formData.amount,
@@ -306,6 +220,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
         // Add the JSON strings as additional fields
         transactionFrom: transactionFromJson,
         transactionTo: transactionToJson,
+        txnTowards: formData.txnTowards,
       };
 
       // Only include trip if it's not empty
@@ -343,20 +258,10 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
           currency: 'INR',
           method: 'upi',
           trip: '',
+          txnTowards: '',
         });
-        setTransactionDetails({
-          rrn: generateRRN(),
-        });
-        setTransactionToDetails({
-          contact: '+919818222176',
-          email: 'void@razorpay.com',
-          vpa: 'deeproganguly-1@okaxis',
-          rrn: generateRRN(),
-        });
-        setPaymentFields({});
-        setPaymentErrors({});
-        setTransactionToPaymentFields({});
-        setTransactionToPaymentErrors({});
+        setFromAccount('');
+        setToAccount('');
         setCurrentStep(1);
       }
     } catch (error) {
@@ -369,109 +274,150 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white">Basic Transaction Details</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Type - Hidden field, always debit */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Type
-                </label>
-                <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
-                  Debit (Default)
+          <div className="space-y-6">
+            {/* Basic Transaction Info Card */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-800 rounded-xl p-6 shadow-sm border border-blue-100 dark:border-gray-700">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                 </div>
-                <input
-                  type="hidden"
-                  value="debit"
-                  name="type"
-                />
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Basic Information</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Enter transaction details</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Type */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => handleInputChange('type', e.target.value)}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all"
+                    disabled={isLoading}
+                  >
+                    <option value="debit">💸 Debit</option>
+                    <option value="credit">💰 Credit</option>
+                  </select>
+                </div>
+
+                {/* Amount */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Amount <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      value={formData.amount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                      className={`w-full pl-8 pr-3 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all ${
+                        errors.amount ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'
+                      }`}
+                      placeholder="0.00"
+                      disabled={isLoading}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  {errors.amount && (
+                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.amount}</p>
+                  )}
+                </div>
+
+                {/* Currency */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Currency <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.currency}
+                    onChange={(e) => handleInputChange('currency', e.target.value)}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all"
+                    disabled={isLoading}
+                  >
+                    <option value="INR">INR</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Amount */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amount <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                    errors.amount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                  placeholder="Enter amount"
-                  disabled={isLoading}
-                  min="0"
-                  step="0.01"
-                />
-                {errors.amount && (
-                  <p className="mt-1 text-sm text-red-500">{errors.amount}</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {/* Method */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Payment Method <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.method}
+                    onChange={(e) => handleInputChange('method', e.target.value)}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all"
+                    disabled={isLoading}
+                  >
+                    <option value="upi">📱 UPI</option>
+                    <option value="card">💳 Card</option>
+                    <option value="wallet">👛 Wallet</option>
+                    <option value="cash">💵 Cash</option>
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Status <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.transactionStatus}
+                    onChange={(e) => handleInputChange('transactionStatus', e.target.value)}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all"
+                    disabled={isLoading}
+                  >
+                    <option value="success">✅ Success</option>
+                    <option value="pending">⏳ Pending</option>
+                    <option value="failed">❌ Failed</option>
+                    <option value="cancelled">🚫 Cancelled</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Currency */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Currency <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.currency}
-                  onChange={(e) => handleInputChange('currency', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  disabled={isLoading}
-                >
-                  <option value="INR">INR</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {/* Transaction For */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                    Transaction For? <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.txnTowards || ''}
+                    onChange={(e) => handleInputChange('txnTowards', e.target.value)}
+                    className={`w-full px-3 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all ${
+                      errors.txnTowards ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'
+                    }`}
+                    disabled={isLoading}
+                  >
+                    <option value="">Select...</option>
+                    <option value="fuel">⛽ Fuel</option>
+                    <option value="driver-advance">👤 Driver Advance</option>
+                    <option value="extra-advance">💰 Extra Advance</option>
+                  </select>
+                  {errors.txnTowards && (
+                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.txnTowards}</p>
+                  )}
+                </div>
 
-              {/* Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Payment Method <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.method}
-                  onChange={(e) => handleInputChange('method', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  disabled={isLoading}
-                >
-                  <option value="upi">UPI</option>
-                  <option value="card">Card</option>
-                  <option value="wallet">Wallet</option>
-                  <option value="cash">Cash</option>
-                </select>
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.transactionStatus}
-                  onChange={(e) => handleInputChange('transactionStatus', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  disabled={isLoading}
-                >
-                  <option value="success">Success</option>
-                  <option value="pending">Pending</option>
-                  <option value="failed">Failed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              {/* Trip Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Associated Trip
+                {/* Trip Selection */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  🚛 Associated Trip (Optional)
                 </label>
                 <select
                   value={formData.trip || ''}
                   onChange={(e) => handleInputChange('trip', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white font-medium transition-all"
                   disabled={isLoading || loadingTrips}
                 >
                   <option value="">No Trip Associated</option>
@@ -482,232 +428,293 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
                   ))}
                 </select>
                 {loadingTrips && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading trips...</p>
+                  <p className="mt-2 text-xs text-blue-500 dark:text-blue-400 flex items-center">
+                    <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading trips...
+                  </p>
                 )}
-                {!loadingTrips && trips.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">No trips available</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm mt-4">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  📝 Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                  className={`w-full px-3 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white resize-none transition-all ${
+                    errors.description ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'
+                  }`}
+                  placeholder="Enter a detailed description of the transaction..."
+                  disabled={isLoading}
+                />
+                {errors.description && (
+                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.description}</p>
                 )}
               </div>
             </div>
 
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none ${
-                  errors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-                placeholder="Enter transaction description"
-                disabled={isLoading}
-              />
-              {errors.description && (
-                <p className="mt-1 text-sm text-red-500">{errors.description}</p>
-              )}
+            {/* Account Transfer Card */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800 rounded-xl p-6 shadow-sm border border-green-100 dark:border-gray-700">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Account Transfer</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Specify source and destination accounts</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* From Account */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-5 shadow-sm border-2 border-red-100 dark:border-red-900">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center mr-2">
+                      <span className="text-white font-bold text-sm">←</span>
+                    </div>
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      From Account <span className="text-red-500">*</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={fromAccount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFromAccount(value);
+                      
+                      // Clear error if exists
+                      if (errors.fromAccount) {
+                        setErrors(prev => ({ ...prev, fromAccount: '' }));
+                      }
+                      
+                      // Real-time validation for digit count
+                      if (value.trim()) {
+                        const digitCount = countDigits(value);
+                        if (digitCount > 18) {
+                          setErrors(prev => ({ ...prev, fromAccount: 'Account number cannot exceed 18 digits' }));
+                        }
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white font-mono text-sm transition-all ${
+                      errors.fromAccount ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'
+                    }`}
+                    placeholder="XXXX-XXXX-XXXX"
+                    disabled={isLoading}
+                  />
+                  {errors.fromAccount && (
+                    <p className="mt-2 text-xs text-red-500 font-medium flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.fromAccount}
+                    </p>
+                  )}
+                </div>
+
+                {/* To Account */}
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-5 shadow-sm border-2 border-green-100 dark:border-green-900">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-2">
+                      <span className="text-white font-bold text-sm">→</span>
+                    </div>
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      To Account <span className="text-red-500">*</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={toAccount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setToAccount(value);
+                      
+                      // Clear error if exists
+                      if (errors.toAccount) {
+                        setErrors(prev => ({ ...prev, toAccount: '' }));
+                      }
+                      
+                      // Real-time validation for digit count
+                      if (value.trim()) {
+                        const digitCount = countDigits(value);
+                        if (digitCount > 18) {
+                          setErrors(prev => ({ ...prev, toAccount: 'Account number cannot exceed 18 digits' }));
+                        }
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-white font-mono text-sm transition-all ${
+                      errors.toAccount ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'
+                    }`}
+                    placeholder="XXXX-XXXX-XXXX"
+                    disabled={isLoading}
+                  />
+                  {errors.toAccount && (
+                    <p className="mt-2 text-xs text-red-500 font-medium flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.toAccount}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         );
 
       case 2:
         return (
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-              <span className="mr-2">{getPaymentMethodConfig(formData.method).icon}</span>
-              Transaction From - {getPaymentMethodConfig(formData.method).description}
-            </h4>
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full mb-3 shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Review Transaction</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Please review the details before confirming</p>
+            </div>
+
+            {/* Transaction Amount Highlight */}
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium mb-1">Transaction Amount</p>
+                  <p className="text-4xl font-bold">{formData.currency} {formData.amount.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                    formData.type === 'debit' 
+                      ? 'bg-red-500 bg-opacity-30 text-red-100' 
+                      : 'bg-green-500 bg-opacity-30 text-green-100'
+                  }`}>
+                    {formData.type === 'debit' ? '↓ Debit' : '↑ Credit'}
+                  </div>
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mt-2 ${
+                    formData.transactionStatus === 'success' ? 'bg-green-500 text-white' :
+                    formData.transactionStatus === 'pending' ? 'bg-yellow-500 text-white' :
+                    formData.transactionStatus === 'failed' ? 'bg-red-500 text-white' :
+                    'bg-gray-500 text-white'
+                  }`}>
+                    {formData.transactionStatus === 'success' ? '✓ ' : 
+                     formData.transactionStatus === 'pending' ? '⏳ ' :
+                     formData.transactionStatus === 'failed' ? '✗ ' : '🚫 '}
+                    {formData.transactionStatus.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {getPaymentMethodConfig(formData.method).fields.map((field) => (
-                <div key={field.key}>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
-                  </label>
-                  {field.type === 'select' ? (
-                    <select
-                      value={paymentFields[field.key] || ''}
-                      onChange={(e) => handlePaymentFieldChange(field.key, e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-                        paymentErrors[field.key] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      disabled={isLoading}
-                    >
-                      <option value="">{field.placeholder}</option>
-                      {field.options?.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type}
-                      value={paymentFields[field.key] || ''}
-                      onChange={(e) => handlePaymentFieldChange(field.key, e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-                        paymentErrors[field.key] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      placeholder={field.placeholder}
-                      disabled={isLoading}
-                      maxLength={field.validation?.maxLength}
-                      minLength={field.validation?.minLength}
-                    />
-                  )}
-                  {paymentErrors[field.key] && (
-                    <p className="mt-1 text-sm text-red-500">{paymentErrors[field.key]}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-              <span className="mr-2">{getPaymentMethodConfig(formData.method).icon}</span>
-              Transaction To - {getPaymentMethodConfig(formData.method).description}
-            </h4>
-            
-            {/* Contact and Email for Transaction To */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Contact Number
-                </label>
-                <input
-                  type="tel"
-                  value={transactionToDetails.contact}
-                  onChange={(e) => handleTransactionToDetailsChange('contact', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter contact number"
-                  disabled={isLoading}
-                />
+            {/* Transaction Details Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4">
+                <h5 className="text-white font-semibold flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Transaction Details
+                </h5>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={transactionToDetails.email}
-                  onChange={(e) => handleTransactionToDetailsChange('email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter email"
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {getPaymentMethodConfig(formData.method).fields.map((field) => (
-                <div key={`to-${field.key}`}>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
-                  </label>
-                  {field.type === 'select' ? (
-                    <select
-                      value={transactionToPaymentFields[field.key] || ''}
-                      onChange={(e) => handleTransactionToPaymentFieldChange(field.key, e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-                        transactionToPaymentErrors[field.key] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      disabled={isLoading}
-                    >
-                      <option value="">{field.placeholder}</option>
-                      {field.options?.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type}
-                      value={transactionToPaymentFields[field.key] || ''}
-                      onChange={(e) => handleTransactionToPaymentFieldChange(field.key, e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-                        transactionToPaymentErrors[field.key] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      placeholder={field.placeholder}
-                      disabled={isLoading}
-                      maxLength={field.validation?.maxLength}
-                      minLength={field.validation?.minLength}
-                    />
-                  )}
-                  {transactionToPaymentErrors[field.key] && (
-                    <p className="mt-1 text-sm text-red-500">{transactionToPaymentErrors[field.key]}</p>
-                  )}
+              <div className="p-6 space-y-4">
+                <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Payment Method</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+                    {formData.method === 'upi' ? '📱' : 
+                     formData.method === 'card' ? '💳' : 
+                     formData.method === 'wallet' ? '👛' : '💵'} 
+                    <span className="ml-2 capitalize">{formData.method}</span>
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white">Review & Confirm</h4>
-            
-            {/* Transaction Summary */}
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <h5 className="font-medium text-gray-900 dark:text-white mb-3">Transaction Summary</h5>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Type:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white capitalize">{formData.type}</span>
+                <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Currency</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {formData.currency === 'INR' ? '🇮🇳 Indian Rupee' :
+                     formData.currency === 'USD' ? '🇺🇸 US Dollar' :
+                     formData.currency === 'EUR' ? '🇪🇺 Euro' : formData.currency}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Amount:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white">{formData.currency} {formData.amount}</span>
+                <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Transaction For</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+                    {formData.txnTowards === 'fuel' ? '⛽ Fuel' :
+                     formData.txnTowards === 'driver-advance' ? '👤 Driver Advance' :
+                     formData.txnTowards === 'extra-advance' ? '💰 Extra Advance' :
+                     formData.txnTowards || 'N/A'}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Method:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white capitalize">{formData.method}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white capitalize">{formData.transactionStatus}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-gray-600 dark:text-gray-400">Description:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white">{formData.description}</span>
+                {formData.trip && (
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700">
+                    <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Associated Trip</span>
+                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">🚛 Trip Linked</span>
+                  </div>
+                )}
+                <div className="py-3">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-medium block mb-2">Description</span>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                    {formData.description}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* JSON Preview */}
-            <div className="space-y-4">
-              <h5 className="font-medium text-gray-900 dark:text-white">Generated JSON Details</h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Transaction From JSON
-                  </label>
-                  <textarea
-                    value={transactionFromJson}
-                    readOnly
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-mono resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Transaction To JSON
-                  </label>
-                  <textarea
-                    value={transactionToJson}
-                    readOnly
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-mono resize-none"
-                  />
+            {/* Account Transfer Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4">
+                <h5 className="text-white font-semibold flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Account Transfer
+                </h5>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  {/* From Account */}
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mr-2">
+                        <span className="text-red-600 dark:text-red-300 font-bold text-sm">←</span>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">From</span>
+                    </div>
+                    <div className="bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4">
+                      <p className="text-lg font-mono font-bold text-red-700 dark:text-red-300">{fromAccount}</p>
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <div className="mx-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </div>
+
+                  {/* To Account */}
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-2">
+                        <span className="text-green-600 dark:text-green-300 font-bold text-sm">→</span>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">To</span>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900 dark:bg-opacity-20 border-2 border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <p className="text-lg font-mono font-bold text-green-700 dark:text-green-300">{toAccount}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+
           </div>
         );
 
@@ -719,43 +726,9 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
   return (
     <div className="space-y-4">
       {/* Step Progress */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          {Array.from({ length: totalSteps }, (_, index) => (
-            <div key={index + 1} className="flex items-center">
-              <button
-                type="button"
-                onClick={() => goToStep(index + 1)}
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
-                  currentStep === index + 1
-                    ? 'bg-blue-600 text-white'
-                    : currentStep > index + 1
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                {currentStep > index + 1 ? '✓' : index + 1}
-              </button>
-              {index < totalSteps - 1 && (
-                <div className={`w-6 h-0.5 mx-1 ${
-                  currentStep > index + 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="text-xs text-gray-600 dark:text-gray-400">
-          Step {currentStep} of {totalSteps}
-        </div>
-      </div>
+      
 
-      {/* Step Labels */}
-      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
-        <span className="text-center flex-1">Basic Details</span>
-        <span className="text-center flex-1">Transaction From</span>
-        <span className="text-center flex-1">Transaction To</span>
-        <span className="text-center flex-1">Review</span>
-      </div>
+      
 
       {/* Step Content */}
       <div className="min-h-[300px]">

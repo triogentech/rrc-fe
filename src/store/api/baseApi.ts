@@ -107,6 +107,13 @@ export class BaseApi {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       
+      // Log full error data for debugging
+      console.error('API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData: errorData,
+      });
+      
       // Handle 403 Forbidden specifically
       if (response.status === 403) {
         console.warn('API: 403 Forbidden - Token may be invalid or expired');
@@ -125,7 +132,7 @@ export class BaseApi {
         message: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
         status: response.status,
         code: errorData.code,
-        details: errorData.details,
+        details: errorData.details || errorData.error,
       } as ApiError;
     }
 

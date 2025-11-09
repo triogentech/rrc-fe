@@ -33,6 +33,7 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
     emergencyContactRelation: '',
     isActive: true,
     // New banking and license fields
+    currentStatus: '',
     drivingLicenceNumber: '',
     accountHolderName: '',
     accountNumber: '',
@@ -67,6 +68,7 @@ export default function DriverEditModal({ isOpen, onClose, driver, onSuccess }: 
         emergencyContactRelation: driver.emergencyContactRelation || '',
         isActive: driver.isActive ?? true,
         // New banking and license fields
+        currentStatus: driver.currentStatus || '',
         drivingLicenceNumber: driver.drivingLicenceNumber || '',
         accountHolderName: driver.accountHolderName || '',
         accountNumber: driver.accountNumber || '',

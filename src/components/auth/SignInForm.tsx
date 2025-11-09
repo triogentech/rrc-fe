@@ -4,11 +4,11 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { EyeCloseIcon, EyeIcon } from "@/icons";
-// import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useReduxAuth } from "@/store/hooks/useReduxAuth";
+import { authService } from "@/store/api/services";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +16,10 @@ export default function SignInForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
   const { login, isLoading } = useAuth();
   const { user } = useReduxAuth();
   const router = useRouter();
@@ -36,10 +40,10 @@ export default function SignInForm() {
         setTimeout(() => {
           // Check user role after successful login
           if (user) {
-            const userRole = user.role?.name || 'Unknown';
+            const userRole: string = user.role?.name || 'Unknown';
             
             // Check if user has valid role for admin access
-            // Allow admin and manager roles, deny user and driver roles
+            // Allow admin and manager roles, deny user, driver, and authenticated roles
             if (userRole !== 'admin' && userRole !== 'manager') {
               setError(`You have a role of ${userRole}. Access denied. Please contact administrator.`);
               return;
@@ -57,6 +61,54 @@ export default function SignInForm() {
       console.error('Login error:', error);
       setError("An error occurred during login. Please try again.");
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotPasswordMessage("");
+    setError("");
+
+    if (!forgotPasswordEmail.trim()) {
+      setForgotPasswordMessage("Please enter your email address");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotPasswordEmail)) {
+      setForgotPasswordMessage("Please enter a valid email address");
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+
+    try {
+      const response = await authService.requestPasswordReset(forgotPasswordEmail);
+      
+      if (response.success) {
+        setForgotPasswordMessage("Password reset email sent! Please check your inbox and follow the instructions to reset your password.");
+        setForgotPasswordEmail("");
+        // Hide the forgot password form after successful submission
+        setTimeout(() => {
+          setShowForgotPassword(false);
+          setForgotPasswordMessage("");
+        }, 3000);
+      } else {
+        setForgotPasswordMessage("Failed to send password reset email. Please try again.");
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      setForgotPasswordMessage("An error occurred while sending the password reset email. Please try again.");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const toggleForgotPassword = () => {
+    setShowForgotPassword(!showForgotPassword);
+    setForgotPasswordMessage("");
+    setForgotPasswordEmail("");
+    setError("");
   };
 
   return (
@@ -133,73 +185,131 @@ export default function SignInForm() {
                 </span>
               </div>
             </div> */}
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-6">
-                {error && (
-                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
-                    {error}
-                  </div>
-                )}
-                <div>
-                  <Label>
-                    Identifier <span className="text-error-500">*</span>{" "}
-                  </Label>
-                  <Input 
-                    placeholder="Enter your identifier (email or username)" 
-                    type="text" 
-                    defaultValue={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>
-                    Password <span className="text-error-500">*</span>{" "}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      defaultValue={password}
-                      onChange={(e) => setPassword(e.target.value)}
+            {!showForgotPassword ? (
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-6">
+                  {error && (
+                    <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                      {error}
+                    </div>
+                  )}
+                  <div>
+                    <Label>
+                      Identifier <span className="text-error-500">*</span>{" "}
+                    </Label>
+                    <Input 
+                      placeholder="Enter your identifier (email or username)" 
+                      type="text" 
+                      defaultValue={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
                     />
-                    <span
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
+                  </div>
+                  <div>
+                    <Label>
+                      Password <span className="text-error-500">*</span>{" "}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        defaultValue={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <span
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
+                      >
+                        {showPassword ? (
+                          <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
+                        ) : (
+                          <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {/* <Checkbox checked={isChecked} onChange={setIsChecked} /> */}
+                      {/* <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
+                        Keep me logged in
+                      </span> */}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleForgotPassword}
+                      className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                     >
-                      {showPassword ? (
-                        <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
-                      ) : (
-                        <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
-                      )}
-                    </span>
+                      Forgot password?
+                    </button> 
+                  </div>
+                  <div>
+                    <Button 
+                      className="w-full" 
+                      size="sm" 
+                      onClick={() => handleSubmit}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? "Signing in..." : "Sign in"}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {/* <Checkbox checked={isChecked} onChange={setIsChecked} /> */}
-                    {/* <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
-                      Keep me logged in
-                    </span> */}
+              </form>
+            ) : (
+              <form onSubmit={handleForgotPassword}>
+                <div className="space-y-6">
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={toggleForgotPassword}
+                      className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    >
+                      ← Back to sign in
+                    </button>
                   </div>
-                  {/* <Link
-                    href="/reset-password"
-                    className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                  >
-                    Forgot password?
-                  </Link> */}
+                  
+                  <div>
+                    <h2 className="mb-2 font-semibold text-gray-800 text-lg dark:text-white/90">
+                      Reset Password
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      Enter your email address and we&apos;ll send you a link to reset your password.
+                    </p>
+                  </div>
+
+                  {forgotPasswordMessage && (
+                    <div className={`p-3 text-sm rounded-lg border ${
+                      forgotPasswordMessage.includes("sent") 
+                        ? "text-green-600 bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400"
+                        : "text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400"
+                    }`}>
+                      {forgotPasswordMessage}
+                    </div>
+                  )}
+
+                  <div>
+                    <Label>
+                      Email Address <span className="text-error-500">*</span>
+                    </Label>
+                    <Input 
+                      placeholder="Enter your email address" 
+                      type="email" 
+                      defaultValue={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <button 
+                      className="w-full px-4 py-3 text-sm bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300 inline-flex items-center justify-center font-medium gap-2 rounded-lg transition disabled:cursor-not-allowed disabled:opacity-50" 
+                      type="submit"
+                      disabled={forgotPasswordLoading}
+                    >
+                      {forgotPasswordLoading ? "Sending..." : "Send Reset Link"}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <Button 
-                    className="w-full" 
-                    size="sm" 
-                    onClick={() => handleSubmit}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Signing in..." : "Sign in"}
-                  </Button>
-                </div>
-              </div>
-            </form>
+              </form>
+            )}
 
             {/* <div className="mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">

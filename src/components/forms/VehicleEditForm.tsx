@@ -1,10 +1,13 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Vehicle, VehicleUpdateRequest } from '@/store/api/types';
 import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.css';
+import { CalenderIcon } from '@/icons';
 
 interface VehicleEditFormProps {
   vehicle: Vehicle;
@@ -27,12 +30,35 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
     engineNumber: vehicle.engineNumber || '',
     chassisNumber: vehicle.chassisNumber || '',
     typeOfVehicleAxle: vehicle.typeOfVehicleAxle || '',
+    // Mandatory date fields
+    registrationDate: vehicle.registrationDate || '',
+    fitnessDate: vehicle.fitnessDate || '',
+    insuranceDate: vehicle.insuranceDate || '',
+    taxDueDate: vehicle.taxDueDate || '',
+    permitDate: vehicle.permitDate || '',
+    puccDate: vehicle.puccDate || '',
+    npValidUpto: vehicle.npValidUpto || '',
     // Custom fields
     cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
     cstmUpdatedBy: user?.documentId || user?.id || '',
   });
 
   const [errors, setErrors] = useState<Partial<VehicleUpdateRequest>>({});
+  const pickersRef = useRef<flatpickr.Instance[]>([]);
+
+  // Handle input changes with useCallback to prevent unnecessary re-renders
+  const handleInputChange = useCallback((field: keyof VehicleUpdateRequest, value: string | boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error when user starts typing
+    setErrors(prev => ({
+      ...prev,
+      [field]: undefined
+    }));
+  }, []);
 
   // Update form data when vehicle prop changes
   useEffect(() => {
@@ -41,32 +67,69 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
       model: vehicle.model,
       type: vehicle.type,
       currentStatus: vehicle.currentStatus,
-      isActive: vehicle.isActive ?? true, // Use isActive and default to true if null
+      isActive: vehicle.isActive ?? true,
       // New mandatory fields
       odometerReading: vehicle.odometerReading || '',
       engineNumber: vehicle.engineNumber || '',
       chassisNumber: vehicle.chassisNumber || '',
       typeOfVehicleAxle: vehicle.typeOfVehicleAxle || '',
+      // Mandatory date fields
+      registrationDate: vehicle.registrationDate || '',
+      fitnessDate: vehicle.fitnessDate || '',
+      insuranceDate: vehicle.insuranceDate || '',
+      taxDueDate: vehicle.taxDueDate || '',
+      permitDate: vehicle.permitDate || '',
+      puccDate: vehicle.puccDate || '',
+      npValidUpto: vehicle.npValidUpto || '',
       // Custom fields
       cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
       cstmUpdatedBy: user?.documentId || user?.id || '',
     });
+
+    // Update flatpickr instances with new dates
+    const dateFields = ['registrationDate', 'fitnessDate', 'insuranceDate', 'taxDueDate', 'permitDate', 'puccDate', 'npValidUpto'];
+    dateFields.forEach((field, index) => {
+      const picker = pickersRef.current[index];
+      const dateValue = vehicle[field as keyof Vehicle] as string;
+      if (picker && dateValue) {
+        picker.setDate(dateValue, false);
+      }
+    });
   }, [vehicle, user]);
 
-  const handleInputChange = (field: keyof VehicleUpdateRequest, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
-  };
+  // Initialize flatpickr for date fields
+  useEffect(() => {
+    const dateFields = [
+      'registrationDate',
+      'fitnessDate',
+      'insuranceDate',
+      'taxDueDate',
+      'permitDate',
+      'puccDate',
+      'npValidUpto'
+    ];
+
+    pickersRef.current = dateFields.map((field) => {
+      const picker = flatpickr(`#${field}`, {
+        dateFormat: "Y-m-d",
+        defaultDate: vehicle[field as keyof Vehicle] as string || undefined,
+        onChange: (selectedDates, dateStr) => {
+          handleInputChange(field as keyof VehicleUpdateRequest, dateStr);
+        },
+      });
+      // flatpickr can return Instance or Instance[], but with ID selector it should be single
+      return Array.isArray(picker) ? picker[0] : picker;
+    });
+
+    return () => {
+      pickersRef.current.forEach((picker) => {
+        if (picker && !Array.isArray(picker)) {
+          picker.destroy();
+        }
+      });
+      pickersRef.current = [];
+    };
+  }, [handleInputChange, vehicle]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<VehicleUpdateRequest> = {};
@@ -120,6 +183,14 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
         engineNumber: formData.engineNumber?.trim(),
         chassisNumber: formData.chassisNumber?.trim(),
         typeOfVehicleAxle: formData.typeOfVehicleAxle?.trim(),
+        // Mandatory date fields
+        registrationDate: formData.registrationDate?.trim(),
+        fitnessDate: formData.fitnessDate?.trim(),
+        insuranceDate: formData.insuranceDate?.trim(),
+        taxDueDate: formData.taxDueDate?.trim(),
+        permitDate: formData.permitDate?.trim(),
+        puccDate: formData.puccDate?.trim(),
+        npValidUpto: formData.npValidUpto?.trim(),
         // Custom fields
         cstmUpdatedBy: formData.cstmUpdatedBy,
       };
@@ -337,6 +408,188 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
           </select>
           {errors.typeOfVehicleAxle && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.typeOfVehicleAxle}</p>
+          )}
+        </div>
+
+        {/* Registration Date */}
+        <div>
+          <label htmlFor="registrationDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Registration Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="registrationDate"
+              value={formData.registrationDate || ''}
+              readOnly
+              placeholder="Select registration date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.registrationDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.registrationDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.registrationDate}</p>
+          )}
+        </div>
+
+        {/* Fitness Date */}
+        <div>
+          <label htmlFor="fitnessDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Fitness Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="fitnessDate"
+              value={formData.fitnessDate || ''}
+              readOnly
+              placeholder="Select fitness date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.fitnessDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.fitnessDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fitnessDate}</p>
+          )}
+        </div>
+
+        {/* Insurance Date */}
+        <div>
+          <label htmlFor="insuranceDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Insurance Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="insuranceDate"
+              value={formData.insuranceDate || ''}
+              readOnly
+              placeholder="Select insurance date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.insuranceDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.insuranceDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.insuranceDate}</p>
+          )}
+        </div>
+
+        {/* Tax Due Date */}
+        <div>
+          <label htmlFor="taxDueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Tax Due Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="taxDueDate"
+              value={formData.taxDueDate || ''}
+              readOnly
+              placeholder="Select tax due date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.taxDueDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.taxDueDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.taxDueDate}</p>
+          )}
+        </div>
+
+        {/* Permit Date */}
+        <div>
+          <label htmlFor="permitDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Permit Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="permitDate"
+              value={formData.permitDate || ''}
+              readOnly
+              placeholder="Select permit date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.permitDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.permitDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.permitDate}</p>
+          )}
+        </div>
+
+        {/* PUCC Date */}
+        <div>
+          <label htmlFor="puccDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            PUCC Date <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="puccDate"
+              value={formData.puccDate || ''}
+              readOnly
+              placeholder="Select PUCC date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.puccDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.puccDate && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.puccDate}</p>
+          )}
+        </div>
+
+        {/* NP Valid Upto */}
+        <div>
+          <label htmlFor="npValidUpto" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            NP Valid Upto <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="npValidUpto"
+              value={formData.npValidUpto || ''}
+              readOnly
+              placeholder="Select NP valid upto date"
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
+                errors.npValidUpto ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
+              disabled={isLoading}
+            />
+            <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+              <CalenderIcon className="size-5" />
+            </span>
+          </div>
+          {errors.npValidUpto && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.npValidUpto}</p>
           )}
         </div>
       </div>

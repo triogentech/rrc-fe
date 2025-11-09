@@ -14,6 +14,8 @@ import {
   BoxIcon,
   DollarLineIcon,
   UserIcon,
+  FolderIcon,
+  ListIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -38,6 +40,7 @@ const navItems: NavItem[] = [
       { name: "In Transit", path: "/trips?status=in-transit" },
       { name: "Completed", path: "/trips?status=completed" },
       { name: "Idle Vehicles", path: "/trips/idle-vehicles" },
+      { name: "Load Providers", path: "/trips/load-providers" },
     ],
   },
   {
@@ -59,6 +62,31 @@ const navItems: NavItem[] = [
     icon: <UserIcon />,
     name: "Staff",
     path: "/staff",
+  },
+  {
+    icon: <FolderIcon />,
+    name: "City",
+    path: "/city",
+  },
+  {
+    icon: <BoxIcon />,
+    name: "Trucks",
+    path: "/trucks/garage",
+    subItems: [
+      { name: "Garage", path: "/trucks/garage" },
+      { name: "Fuel Station", path: "/trucks/fuel-station" },
+    ],
+  },
+  {
+    icon: <ListIcon />,
+    name: "Logs",
+    path: "/logs/fuel-logs",
+    subItems: [
+      { name: "Fuel Logs", path: "/logs/fuel-logs" },
+      { name: "Garage Logs", path: "/logs/garage-logs" },
+      { name: "Toll Logs", path: "/logs/toll-logs" },
+      { name: "Tyre Logs", path: "/logs/tyre-logs" },
+    ],
   },
   // {
   //   icon: <UserCircleIcon />,

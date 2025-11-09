@@ -28,6 +28,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
     address: '',
     reference: '',
     // New fields
+    currentStatus: 'available',
     drivingLicenceNumber: '',
     accountHolderName: '',
     accountNumber: '',

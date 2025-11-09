@@ -53,9 +53,9 @@ export default function VehicleCreateModal({ isOpen, onClose, onSuccess }: Vehic
           </button>
 
           {/* Modal content */}
-          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Create New Vehicle
               </h2>
@@ -65,7 +65,7 @@ export default function VehicleCreateModal({ isOpen, onClose, onSuccess }: Vehic
             </div>
 
             {/* Form */}
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-y-auto flex-1">
               <VehicleCreateForm
                 onSuccess={handleSuccess}
                 onCancel={onClose}

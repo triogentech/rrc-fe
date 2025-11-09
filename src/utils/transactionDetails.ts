@@ -208,291 +208,50 @@ export interface PaymentMethodConfig {
 
 /**
  * Gets payment method specific field configuration
- * @param method - Payment method
- * @returns Field configuration for the method
+ * Simplified to only use account numbers
+ * @returns Field configuration
  */
-export const getPaymentMethodConfig = (method: string): PaymentMethodConfig => {
-  switch (method.toLowerCase()) {
-    case 'upi':
-      return {
-        fields: [
-          {
-            key: 'vpa',
-            label: 'VPA (Virtual Payment Address)',
-            type: 'text',
-            placeholder: 'user@paytm',
-            required: true,
-            validation: {
-              pattern: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$/,
-              minLength: 5
-            }
-          },
-          {
-            key: 'payer_account_type',
-            label: 'Account Type',
-            type: 'select',
-            placeholder: 'Select account type',
-            required: true,
-            options: [
-              { value: 'bank_account', label: 'Bank Account' },
-              { value: 'savings_account', label: 'Savings Account' },
-              { value: 'current_account', label: 'Current Account' }
-            ]
-          }
-        ],
-        icon: '💳',
-        description: 'UPI payment details',
-        defaultValues: {
-          vpa: 'deeproganguly-1@okaxis',
-          payer_account_type: 'bank_account'
+export const getPaymentMethodConfig = (): PaymentMethodConfig => {
+  // Return a simple account number field for all payment methods
+  return {
+    fields: [
+      {
+        key: 'account',
+        label: 'Account Number',
+        type: 'text',
+        placeholder: 'Enter account number',
+        required: true,
+        validation: {
+          minLength: 5,
+          maxLength: 50
         }
-      };
-
-    case 'card':
-      return {
-        fields: [
-          {
-            key: 'card_number',
-            label: 'Card Number',
-            type: 'text',
-            placeholder: '1234 5678 9012 3456',
-            required: true,
-            validation: {
-              pattern: /^[0-9\s]{13,19}$/,
-              minLength: 13,
-              maxLength: 19
-            }
-          },
-          {
-            key: 'card_holder_name',
-            label: 'Card Holder Name',
-            type: 'text',
-            placeholder: 'John Doe',
-            required: true,
-            validation: {
-              minLength: 2,
-              maxLength: 50
-            }
-          },
-          {
-            key: 'expiry_month',
-            label: 'Expiry Month',
-            type: 'select',
-            placeholder: 'MM',
-            required: true,
-            options: Array.from({ length: 12 }, (_, i) => ({
-              value: String(i + 1).padStart(2, '0'),
-              label: String(i + 1).padStart(2, '0')
-            }))
-          },
-          {
-            key: 'expiry_year',
-            label: 'Expiry Year',
-            type: 'select',
-            placeholder: 'YYYY',
-            required: true,
-            options: Array.from({ length: 10 }, (_, i) => {
-              const year = new Date().getFullYear() + i;
-              return { value: String(year), label: String(year) };
-            })
-          },
-          {
-            key: 'cvv',
-            label: 'CVV',
-            type: 'text',
-            placeholder: '123',
-            required: true,
-            validation: {
-              pattern: /^[0-9]{3,4}$/,
-              minLength: 3,
-              maxLength: 4
-            }
-          },
-          {
-            key: 'network',
-            label: 'Card Network',
-            type: 'select',
-            placeholder: 'Select network',
-            required: true,
-            options: [
-              { value: 'Visa', label: 'Visa' },
-              { value: 'MasterCard', label: 'MasterCard' },
-              { value: 'RuPay', label: 'RuPay' },
-              { value: 'American Express', label: 'American Express' }
-            ]
-          }
-        ],
-        icon: '💳',
-        description: 'Credit/Debit card details',
-        defaultValues: {
-          card_number: '',
-          card_holder_name: '',
-          expiry_month: '',
-          expiry_year: '',
-          cvv: '',
-          network: 'Visa'
-        }
-      };
-
-
-    case 'wallet':
-      return {
-        fields: [
-          {
-            key: 'wallet_provider',
-            label: 'Wallet Provider',
-            type: 'select',
-            placeholder: 'Select wallet',
-            required: true,
-            options: [
-              { value: 'Paytm', label: 'Paytm' },
-              { value: 'PhonePe', label: 'PhonePe' },
-              { value: 'Google Pay', label: 'Google Pay' },
-              { value: 'Amazon Pay', label: 'Amazon Pay' },
-              { value: 'Mobikwik', label: 'Mobikwik' }
-            ]
-          },
-          {
-            key: 'wallet_id',
-            label: 'Wallet ID',
-            type: 'text',
-            placeholder: 'wallet_123456',
-            required: true,
-            validation: {
-              minLength: 5,
-              maxLength: 20
-            }
-          },
-          {
-            key: 'phone_number',
-            label: 'Phone Number',
-            type: 'tel',
-            placeholder: '+91 9876543210',
-            required: true,
-            validation: {
-              pattern: /^\+?[1-9]\d{1,14}$/,
-              minLength: 10,
-              maxLength: 15
-            }
-          }
-        ],
-        icon: '👛',
-        description: 'Digital wallet details',
-        defaultValues: {
-          wallet_provider: 'Paytm',
-          wallet_id: '',
-          phone_number: '+919876543210'
-        }
-      };
-
-    case 'cash':
-      return {
-        fields: [
-          {
-            key: 'receipt_number',
-            label: 'Receipt Number',
-            type: 'text',
-            placeholder: 'RCP-123456',
-            required: true,
-            validation: {
-              pattern: /^[A-Z]{3}-[0-9]{6}$/,
-              minLength: 10,
-              maxLength: 10
-            }
-          },
-          {
-            key: 'collected_by',
-            label: 'Collected By',
-            type: 'text',
-            placeholder: 'Staff Name',
-            required: true,
-            validation: {
-              minLength: 2,
-              maxLength: 50
-            }
-          },
-          {
-            key: 'location',
-            label: 'Collection Location',
-            type: 'text',
-            placeholder: 'Office/Store Location',
-            required: true,
-            validation: {
-              minLength: 3,
-              maxLength: 100
-            }
-          }
-        ],
-        icon: '💵',
-        description: 'Cash payment details',
-        defaultValues: {
-          receipt_number: `RCP-${Date.now()}`,
-          collected_by: '',
-          location: ''
-        }
-      };
-
-    default:
-      return {
-        fields: [],
-        icon: '💰',
-        description: 'Payment details',
-        defaultValues: {}
-      };
-  }
+      }
+    ],
+    icon: '💰',
+    description: 'Account details',
+    defaultValues: {
+      account: ''
+    }
+  };
 };
 
 /**
  * Gets default values for payment method fields
- * @param method - Payment method
  * @returns Default field values
  */
-export const getDefaultPaymentValues = (method: string): Record<string, string> => {
-  const config = getPaymentMethodConfig(method);
+export const getDefaultPaymentValues = (): Record<string, string> => {
+  const config = getPaymentMethodConfig();
   return config.defaultValues;
 };
 
 /**
- * Generates a simplified transaction details JSON with only essential fields
- * @param details - Basic transaction details
+ * Generates a simplified transaction details JSON with only account number
+ * @param accountNumber - Account number for From/To
  * @returns JSON string for transaction details
  */
-export const generateSimplifiedTransactionDetails = (details: {
-  id: string;
-  amount: number;
-  currency: string;
-  method: string;
-  status: string;
-  description: string;
-  contact?: string;
-  email?: string;
-  vpa?: string;
-  rrn?: string;
-}): string => {
+export const generateSimplifiedTransactionDetails = (accountNumber: string): string => {
   const transactionDetails = {
-    id: details.id,
-    amount: details.amount,
-    currency: details.currency,
-    method: details.method,
-    status: details.status,
-    description: details.description,
-    contact: details.contact || "+919818222176",
-    email: details.email || "void@razorpay.com",
-    captured: true,
-    entity: "payment",
-    international: false,
-    ...(details.method === "upi" && {
-      vpa: details.vpa || "deeproganguly-1@okaxis",
-      upi: {
-        vpa: details.vpa || "deeproganguly-1@okaxis",
-        payer_account_type: "bank_account"
-      }
-    }),
-    ...(details.rrn && {
-      acquirer_data: {
-        rrn: details.rrn
-      }
-    })
+    account: accountNumber || 'N/A'
   };
 
   return JSON.stringify(transactionDetails);
@@ -500,12 +259,11 @@ export const generateSimplifiedTransactionDetails = (details: {
 
 /**
  * Validates payment method specific fields
- * @param method - Payment method
  * @param values - Field values to validate
  * @returns Validation result with errors if any
  */
-export const validatePaymentFields = (method: string, values: Record<string, string>): { isValid: boolean; errors: Record<string, string> } => {
-  const config = getPaymentMethodConfig(method);
+export const validatePaymentFields = (values: Record<string, string>): { isValid: boolean; errors: Record<string, string> } => {
+  const config = getPaymentMethodConfig();
   const errors: Record<string, string> = {};
 
   config.fields.forEach(field => {

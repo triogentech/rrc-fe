@@ -11,16 +11,25 @@ export default function IdleVehiclesPage() {
     error,
     getVehicles,
     getVehicleDisplayName,
-    getVehicleTypeDisplayName,
     clearVehiclesError,
   } = useVehicles();
 
   const [expandedVehicles, setExpandedVehicles] = useState<Set<string>>(new Set());
+  const [, setTick] = useState(0); // For real-time updates
 
   // Fetch vehicles on component mount
   useEffect(() => {
     getVehicles();
   }, [getVehicles]);
+
+  // Force re-render periodically to update "Idle Since" in real-time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(prev => prev + 1);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Filter for idle vehicles only
   const idleVehicles = vehicles.filter(vehicle => vehicle.currentStatus === 'idle');
@@ -58,7 +67,46 @@ export default function IdleVehiclesPage() {
       }
     }
     
-    return completedTrips;
+    // Sort by actualEndTime (most recent first)
+    return completedTrips.sort((a, b) => {
+      const timeA = a.actualEndTime ? new Date(a.actualEndTime).getTime() : 0;
+      const timeB = b.actualEndTime ? new Date(b.actualEndTime).getTime() : 0;
+      return timeB - timeA; // Descending order
+    });
+  };
+
+  // Get the last completed trip for a vehicle
+  const getLastCompletedTrip = (vehicle: Vehicle): Trip | null => {
+    const completedTrips = getCompletedTrips(vehicle);
+    return completedTrips.length > 0 ? completedTrips[0] : null;
+  };
+
+  // Calculate idle time in hours
+  const getIdleTimeInHours = (vehicle: Vehicle): string => {
+    const lastTrip = getLastCompletedTrip(vehicle);
+    
+    if (!lastTrip || !lastTrip.actualEndTime) {
+      // If no completed trip, use updatedAt as fallback
+      if (vehicle.updatedAt) {
+        const updatedAt = new Date(vehicle.updatedAt);
+        const now = new Date();
+        const diffInMs = now.getTime() - updatedAt.getTime();
+        const diffInHours = diffInMs / (1000 * 60 * 60);
+        return `${Math.round(diffInHours * 10) / 10}h`;
+      }
+      return 'N/A';
+    }
+    
+    const completedAt = new Date(lastTrip.actualEndTime);
+    const now = new Date();
+    const diffInMs = now.getTime() - completedAt.getTime();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    
+    // Always show in hours format with 1 decimal place
+    if (diffInHours < 0.1) {
+      return '0.1h';
+    }
+    return `${Math.round(diffInHours * 10) / 10}h`;
   };
 
   // Format date
@@ -141,30 +189,21 @@ export default function IdleVehiclesPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Vehicle
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Type
-                      </th>
+                      
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Status
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Odometer
+                        Last Trip Route
                       </th>
+                      
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Engine Number
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Chassis Number
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Axle Type
+                        Idle Since
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Completed Trips
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Last Updated
-                      </th>
+                      
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Updated By
                       </th>
@@ -173,6 +212,7 @@ export default function IdleVehiclesPage() {
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {idleVehicles.map((vehicle: Vehicle) => {
                       const completedTrips = getCompletedTrips(vehicle);
+                      const lastTrip = getLastCompletedTrip(vehicle);
                       const isExpanded = expandedVehicles.has(vehicle.documentId);
                       
                       return (
@@ -195,40 +235,32 @@ export default function IdleVehiclesPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {getVehicleTypeDisplayName(vehicle.type)}
-                          </div>
-                        </td>
+                       
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                             Idle
                           </span>
                         </td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.odometerReading || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.engineNumber || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.chassisNumber || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.typeOfVehicleAxle ? (
-                              <span className="capitalize">{vehicle.typeOfVehicleAxle}</span>
+                            {lastTrip ? (
+                              <span>
+                                {lastTrip.startPoint || 'N/A'} → {lastTrip.endPoint || 'N/A'}
+                              </span>
                             ) : (
-                              'N/A'
+                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
                             )}
                           </div>
                         </td>
+                        
+                            
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {getIdleTimeInHours(vehicle)}
+                          </div>
+                        </td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap">
                           {completedTrips.length > 0 ? (
                             <button
@@ -248,11 +280,6 @@ export default function IdleVehiclesPage() {
                           ) : (
                             <span className="text-sm text-gray-500 dark:text-gray-400">No completed trips</span>
                           )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(vehicle.updatedAt)}
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
@@ -277,7 +304,7 @@ export default function IdleVehiclesPage() {
                       {/* Expanded Row - Trip Details */}
                       {isExpanded && completedTrips.length > 0 && (
                         <tr>
-                          <td colSpan={9} className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
+                          <td colSpan={7} className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
                             <div className="space-y-3">
                               <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                                 Completed Trips for {vehicle.vehicleNumber}

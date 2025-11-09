@@ -26,6 +26,21 @@ export class ApiErrorHandler {
    */
   static getErrorMessage(error: unknown): string {
     if (this.isApiError(error)) {
+      // For 400 errors, try to extract detailed validation errors
+      if (error.status === 400 && error.details) {
+        const details = error.details as { errors?: Array<{ message?: string; path?: string[] }> };
+        if (details.errors && Array.isArray(details.errors)) {
+          const messages = details.errors
+            .map(err => {
+              if (err.path && err.path.length > 0) {
+                return `${err.path.join('.')}: ${err.message || 'Invalid value'}`;
+              }
+              return err.message || 'Validation error';
+            })
+            .join('; ');
+          return messages || error.message;
+        }
+      }
       return error.message;
     }
     

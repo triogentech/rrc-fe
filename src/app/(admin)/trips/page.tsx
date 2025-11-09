@@ -27,7 +27,6 @@ const TripsPage = () => {
     deleteTrip,
     getTripStatusColor,
     formatTripDate,
-    getTripDuration,
     clearTripsError,
   } = useTrips();
 
@@ -91,6 +90,13 @@ const TripsPage = () => {
 
   // Calculate estimated TAT (Turn Around Time) in hours
   const getEstimatedTAT = (trip: Trip): string => {
+    // Use totalTripTimeInMinutes if available (more accurate)
+    if (trip.totalTripTimeInMinutes && trip.totalTripTimeInMinutes > 0) {
+      const hours = trip.totalTripTimeInMinutes / 60;
+      return `${Math.round(hours * 10) / 10}h`;
+    }
+    
+    // Fallback to calculating from estimated times
     if (!trip.estimatedStartTime || !trip.estimatedEndTime) {
       return 'N/A';
     }
@@ -100,83 +106,72 @@ const TripsPage = () => {
     const diffInMs = endTime.getTime() - startTime.getTime();
     const diffInHours = diffInMs / (1000 * 60 * 60);
     
-    if (diffInHours < 1) {
-      const minutes = Math.round(diffInHours * 60);
-      return `${minutes}m`;
-    } else if (diffInHours < 24) {
-      return `${Math.round(diffInHours * 10) / 10}h`;
-    } else {
-      const days = Math.floor(diffInHours / 24);
-      const remainingHours = Math.round((diffInHours % 24) * 10) / 10;
-      return `${days}d ${remainingHours}h`;
+    // Always show in hours format with 1 decimal place
+    if (diffInHours < 0.1) {
+      return '0.1h';
     }
+    return `${Math.round(diffInHours * 10) / 10}h`;
   };
 
-  // Calculate actual TAT (Turn Around Time) in hours
-  const getActualTAT = (trip: Trip): string => {
-    if (!trip.estimatedStartTime || !trip.actualEndTime) {
-      return 'N/A';
-    }
-    
-    const startTime = new Date(trip.estimatedStartTime);
-    const endTime = new Date(trip.actualEndTime);
-    const diffInMs = endTime.getTime() - startTime.getTime();
-    const diffInHours = diffInMs / (1000 * 60 * 60);
-    
-    if (diffInHours < 1) {
-      const minutes = Math.round(diffInHours * 60);
-      return `${minutes}m`;
-    } else if (diffInHours < 24) {
+  // Calculate running TAT (Turn Around Time) in hours
+  const getRunningTAT = (trip: Trip): string => {
+    // If trip is completed and has actual end time, calculate from actual end time
+    if (trip.currentStatus === 'completed' && trip.actualEndTime) {
+      if (!trip.estimatedStartTime || !trip.actualEndTime) {
+        return 'N/A';
+      }
+      
+      const startTime = new Date(trip.estimatedStartTime);
+      const endTime = new Date(trip.actualEndTime);
+      const diffInMs = endTime.getTime() - startTime.getTime();
+      const diffInHours = diffInMs / (1000 * 60 * 60);
+      
+      // Always show in hours format with 1 decimal place
+      if (diffInHours < 0.1) {
+        return '0.1h';
+      }
       return `${Math.round(diffInHours * 10) / 10}h`;
-    } else {
-      const days = Math.floor(diffInHours / 24);
-      const remainingHours = Math.round((diffInHours % 24) * 10) / 10;
-      return `${days}d ${remainingHours}h`;
     }
+    
+    // If trip is in progress, calculate from current time
+    if (trip.currentStatus === 'in-transit' || trip.currentStatus === 'created') {
+      if (!trip.estimatedStartTime) {
+        return 'N/A';
+      }
+      
+      const startTime = new Date(trip.estimatedStartTime);
+      const now = new Date();
+      const diffInMs = now.getTime() - startTime.getTime();
+      const diffInHours = diffInMs / (1000 * 60 * 60);
+      
+      // Always show in hours format with 1 decimal place
+      if (diffInHours < 0) {
+        return '0.0h'; // Trip hasn't started yet
+      }
+      if (diffInHours < 0.1) {
+        return '0.1h';
+      }
+      return `${Math.round(diffInHours * 10) / 10}h`;
+    }
+    
+    return 'N/A';
   };
 
-  // Calculate TAT variance (actual vs estimated)
-  const getTATVariance = (trip: Trip): { variance: string; isOverdue: boolean } => {
-    if (!trip.estimatedStartTime || !trip.estimatedEndTime || !trip.actualEndTime) {
-      return { variance: 'N/A', isOverdue: false };
-    }
-    
-    const estimatedStart = new Date(trip.estimatedStartTime);
-    const estimatedEnd = new Date(trip.estimatedEndTime);
-    const actualEnd = new Date(trip.actualEndTime);
-    
-    const estimatedTAT = estimatedEnd.getTime() - estimatedStart.getTime();
-    const actualTAT = actualEnd.getTime() - estimatedStart.getTime();
-    
-    const varianceMs = actualTAT - estimatedTAT;
-    const varianceHours = varianceMs / (1000 * 60 * 60);
-    
-    if (Math.abs(varianceHours) < 0.1) {
-      return { variance: 'On Time', isOverdue: false };
-    }
-    
-    const isOverdue = varianceHours > 0;
-    const absVarianceHours = Math.abs(varianceHours);
-    
-    let varianceText: string;
-    if (absVarianceHours < 1) {
-      const minutes = Math.round(absVarianceHours * 60);
-      varianceText = `${minutes}m ${isOverdue ? 'overdue' : 'early'}`;
-    } else if (absVarianceHours < 24) {
-      varianceText = `${Math.round(absVarianceHours * 10) / 10}h ${isOverdue ? 'overdue' : 'early'}`;
-    } else {
-      const days = Math.floor(absVarianceHours / 24);
-      const remainingHours = Math.round((absVarianceHours % 24) * 10) / 10;
-      varianceText = `${days}d ${remainingHours}h ${isOverdue ? 'overdue' : 'early'}`;
-    }
-    
-    return { variance: varianceText, isOverdue };
-  };
 
   // Update document title based on current status
   useEffect(() => {
     document.title = `${getPageTitle()} - RRC Trips`;
   }, [getPageTitle]);
+
+  // Force re-render periodically to update running TAT for in-progress trips
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(prev => prev + 1);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
   
 
   // Handle trip creation success
@@ -474,7 +469,13 @@ const TripsPage = () => {
                   Vehicle
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Trip Number
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Trip From
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Distance (KM)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Trip To
@@ -486,28 +487,19 @@ const TripsPage = () => {
                   End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Est. TAT
+                  TAT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actual End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actual TAT
+                  Running TAT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Trip Number
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Driver
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Duration
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Distance (KM)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Logistics Provider
@@ -550,7 +542,13 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 2. Trip From */}
+                  {/* 2. Trip Number */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {trip.tripNumber}
+                    </div>
+                  </td>
+                  {/* 3. Trip From */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                     {trip.startPoint ? (
@@ -560,7 +558,13 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 3. Trip To */}
+                  {/* 4. Distance (KM) */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
+                    </div>
+                  </td>
+                  {/* 5. Trip To */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                     {trip.endPoint ? (
@@ -570,61 +574,37 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 4. Start Time */}
+                  {/* 6. Start Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {formatTripDate(trip.estimatedStartTime)}
                     </div>
                   </td>
-                  {/* 5. End Time */}
+                  {/* 7. End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {formatTripDate(trip.estimatedEndTime)}
                     </div>
                   </td>
-                  {/* 6. Est. TAT */}
+                  {/* 8. Est. TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      <div className="font-medium">{getEstimatedTAT(trip)}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Turn Around Time
-                      </div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {getEstimatedTAT(trip)}
                     </div>
                   </td>
-                  {/* 7. Actual End Time */}
+                  {/* 9. Actual End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                     </div>
                   </td>
-                  {/* 8. Actual TAT */}
+                  {/* 10. Running TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.actualEndTime ? (
-                        <div>
-                          <div className="font-medium">{getActualTAT(trip)}</div>
-                          {trip.currentStatus === 'completed' && (
-                            (() => {
-                              const variance = getTATVariance(trip);
-                              return (
-                                <div className={`text-xs ${variance.isOverdue ? 'text-red-600 dark:text-red-400' : variance.variance === 'On Time' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                                  {variance.variance}
-                                </div>
-                              );
-                            })()
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="text-gray-500 dark:text-gray-400">N/A</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {trip.currentStatus === 'completed' ? 'No actual end time' : 'Trip in progress'}
-                          </div>
-                        </div>
-                      )}
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {getRunningTAT(trip)}
                     </div>
                   </td>
-                  {/* 9. Status */}
+                  {/* 11. Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={trip.currentStatus}
@@ -639,13 +619,7 @@ const TripsPage = () => {
                       <option value="completed">Completed</option>
                     </select>
                   </td>
-                  {/* 10. Trip Number */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {trip.tripNumber}
-                    </div>
-                  </td>
-                  {/* 11. Driver */}
+                  {/* 12. Driver */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.driver ? (
@@ -671,19 +645,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 12. Duration */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {getTripDuration(trip)}
-                    </div>
-                  </td>
-                  {/* 13. Distance (KM) */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
-                    </div>
-                  </td>
-                  {/* 14. Logistics Provider */}
+                  {/* 13. Logistics Provider */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.logisticsProvider ? (
@@ -702,7 +664,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 15. Created By */}
+                  {/* 14. Created By */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.cstmCreatedBy ? (
@@ -721,7 +683,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 16. Updated By */}
+                  {/* 15. Updated By */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.cstmUpdatedBy ? (
@@ -740,7 +702,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 17. Actions */}
+                  {/* 16. Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button 
