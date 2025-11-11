@@ -285,32 +285,19 @@ const LoadProviderCreateModal: React.FC<LoadProviderCreateModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 City
               </label>
-              <div className="flex gap-2">
-                <select
-                  value={formData.city || ''}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  disabled={isSubmitting || isLoadingCities}
-                >
-                  <option value="">Select a city</option>
-                  {cities.map((city) => (
-                    <option key={city.documentId} value={city.documentId}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowAddCity(!showAddCity)}
-                  disabled={isSubmitting}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  title="Add new city"
-                >
-                  <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </div>
+              <select
+                value={formData.city || ''}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                disabled={isSubmitting || isLoadingCities}
+              >
+                <option value="">Select a city</option>
+                {cities.map((city) => (
+                  <option key={city.documentId} value={city.documentId}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
               
               {/* Add City Input */}
               {showAddCity && (

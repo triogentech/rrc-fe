@@ -11,12 +11,18 @@ export const getApiBaseUrl = (): string => {
   }
   
   // Fallback to production URL
-  return 'https://rrc-be.onrender.com/api';
+  return 'https://rrc-be.ramanroadcarrier.in/api';
 };
 
 // Get development API base URL
 export const getDevApiBaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_DEV_API_BASE_URL || 'http://15.206.221.189/api';
+  // Check for environment variable first
+  if (process.env.NEXT_PUBLIC_DEV_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_DEV_API_BASE_URL;
+  }
+  
+  // Fallback to development URL
+  return 'http://localhost:1340/api';
 };
 
 // Current API configuration
