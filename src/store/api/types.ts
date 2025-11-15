@@ -576,7 +576,6 @@ export interface Transaction extends BaseEntity {
 }
 
 export interface TransactionCreateRequest {
-  transactionId: string;
   type: 'debit' | 'credit';
   amount: number;
   description: string;

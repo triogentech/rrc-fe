@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTransactions } from '@/store/hooks/useTransactions';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import { useTrips } from '@/store/hooks/useTrips';
-import { generateSimplifiedTransactionDetails, generateTransactionId } from '@/utils/transactionDetails';
+import { generateSimplifiedTransactionDetails } from '@/utils/transactionDetails';
 import type { TransactionCreateRequest, Transaction } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
@@ -18,7 +18,6 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
   const { trips, isLoading: loadingTrips, getTrips } = useTrips();
 
   const [formData, setFormData] = useState<TransactionCreateRequest & { txnTowards?: string }>({
-    transactionId: '', // Will be auto-generated on submit
     type: 'debit',
     amount: 0,
     description: '',
@@ -205,12 +204,10 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
     }
 
     try {
-      // Auto-generate transaction ID
-      const generatedTransactionId = generateTransactionId();
+      
       
       // Create the transaction with JSON details
       const transactionData: TransactionCreateRequest & { transactionFrom?: string; transactionTo?: string; txnTowards?: string } = {
-        transactionId: generatedTransactionId,
         type: formData.type,
         amount: formData.amount,
         description: formData.description,
@@ -250,7 +247,6 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
         onSuccess?.(newTransaction);
         // Reset form
         setFormData({
-          transactionId: '',
           type: 'debit',
           amount: 0,
           description: '',
