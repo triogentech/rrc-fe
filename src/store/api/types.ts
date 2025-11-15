@@ -585,6 +585,7 @@ export interface TransactionCreateRequest {
   trip?: string;
   cstmCreatedBy?: string;
   cstmUpdatedBy?: string;
+  isTxnAddedManually?: boolean;
 }
 
 export interface TransactionUpdateRequest extends Partial<TransactionCreateRequest> {

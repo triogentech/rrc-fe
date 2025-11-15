@@ -218,6 +218,7 @@ export default function TransactionCreateForm({ onSuccess, onCancel }: Transacti
         transactionFrom: transactionFromJson,
         transactionTo: transactionToJson,
         txnTowards: formData.txnTowards,
+        isTxnAddedManually: true,
       };
 
       // Only include trip if it's not empty
