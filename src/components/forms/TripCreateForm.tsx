@@ -248,6 +248,10 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       newErrors.totalTripDistanceInKM = 'Total Trip Distance must be greater than 0';
     }
     
+    // if (!formData.driver) {
+    //   newErrors.driver = 'Driver is required';
+    // }
+    
     if (!formData.vehicle) {
       newErrors.vehicle = 'Vehicle is required';
     }
