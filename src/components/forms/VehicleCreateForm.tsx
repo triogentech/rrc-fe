@@ -355,6 +355,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('registrationDate', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select registration date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.registrationDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
@@ -381,6 +386,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('fitnessDate', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select fitness date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.fitnessDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
@@ -407,6 +417,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('insuranceDate', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select insurance date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.insuranceDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
@@ -433,6 +448,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('taxDueDate', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select tax due date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.taxDueDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
@@ -459,6 +479,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('permitDate', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select permit date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.permitDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
@@ -485,6 +510,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('puccDate', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select PUCC date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.puccDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
@@ -511,6 +541,11 @@ export default function VehicleCreateForm({ onSuccess, onCancel }: VehicleCreate
               onChange={(date) => handleInputChange('npValidUpto', formatDateForStorage(date))}
               dateFormat="yyyy-MM-dd"
               placeholderText="Select NP valid upto date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.npValidUpto ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}

@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTransactions, getTransactionStatusColor, getTransactionTypeColor, getTransactionMethodIcon, formatCurrency, formatDate } from '@/store/hooks/useTransactions';
 import TransactionCreateModal from '@/components/modals/TransactionCreateModal';
+import TransactionEditModal from '@/components/modals/TransactionEditModal';
+import type { Transaction } from '@/store/api/types';
 
 export default function ExpensePage() {
   const { transactions, isLoading, error, pagination, getTransactions } = useTransactions();
@@ -10,6 +12,8 @@ export default function ExpensePage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
   // Debounced search effect
@@ -94,6 +98,31 @@ export default function ExpensePage() {
     // Refresh the transactions list
     getTransactions();
     setIsCreateModalOpen(false);
+  };
+
+  // Handle edit transaction
+  const handleEditTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedTransaction(null);
+  };
+
+  // Handle transaction update success
+  const handleTransactionUpdated = () => {
+    // Refresh the transactions list
+    getTransactions({
+      page: pagination?.page || 1,
+      search: searchTerm || undefined,
+      status: statusFilter || undefined,
+      type: typeFilter || undefined,
+      method: methodFilter || undefined,
+    });
+    handleCloseEditModal();
   };
 
   return (
@@ -310,6 +339,9 @@ export default function ExpensePage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Date
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -358,6 +390,19 @@ export default function ExpensePage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(transaction.createdAt)}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditTransaction(transaction)}
+                            className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                            title="Edit transaction"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -402,6 +447,14 @@ export default function ExpensePage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleTransactionCreated}
+      />
+
+      {/* Transaction Edit Modal */}
+      <TransactionEditModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        transaction={selectedTransaction}
+        onSuccess={handleTransactionUpdated}
       />
     </div>
   );

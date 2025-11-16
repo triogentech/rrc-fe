@@ -5,6 +5,7 @@ import type { City } from '@/store/api/types';
 import { showErrorToast } from '@/utils/toastHelper';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 import CityCreateModal from '@/components/modals/CityCreateModal';
+import CityEditModal from '@/components/modals/CityEditModal';
 
 export default function CityPage() {
   const [cities, setCities] = useState<City[]>([]);
@@ -12,6 +13,8 @@ export default function CityPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [pagination, setPagination] = useState<{
     page: number;
     pageSize: number;
@@ -109,6 +112,25 @@ export default function CityPage() {
   const handleCityCreated = () => {
     // Refresh the cities list - go to first page to see the newly created city
     fetchCities({ page: 1, search: searchQuery || undefined });
+  };
+
+  // Handle edit city
+  const handleEditCity = (city: City) => {
+    setSelectedCity(city);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedCity(null);
+  };
+
+  // Handle city update success
+  const handleCityUpdated = () => {
+    // Refresh the cities list
+    fetchCities({ page: pagination?.page || 1, search: searchQuery || undefined });
+    handleCloseEditModal();
   };
 
   // Format date
@@ -262,6 +284,9 @@ export default function CityPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Created By
                       </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -368,6 +393,19 @@ export default function CityPage() {
                             )}
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEditCity(city)}
+                              className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                              title="Edit city"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -408,6 +446,14 @@ export default function CityPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleCityCreated}
+      />
+
+      {/* City Edit Modal */}
+      <CityEditModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        city={selectedCity}
+        onSuccess={handleCityUpdated}
       />
     </div>
   );

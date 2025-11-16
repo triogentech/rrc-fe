@@ -7,7 +7,6 @@ import VehicleViewModal from '@/components/modals/VehicleViewModal';
 import VehicleEditModal from '@/components/modals/VehicleEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Vehicle } from '@/store/api/types';
-import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 
 export default function VehiclesPage() {
   const {
@@ -18,7 +17,7 @@ export default function VehiclesPage() {
     getVehicles,
     deleteVehicle,
     getVehicleDisplayName,
-    getVehicleTypeDisplayName,
+    // getVehicleTypeDisplayName,
     getVehicleStatusDisplayName,
     getVehicleStatusColor,
     clearVehiclesError,
@@ -128,11 +127,11 @@ export default function VehiclesPage() {
 
   // Format date
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
   };
 
   return (
@@ -236,23 +235,38 @@ export default function VehiclesPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Vehicle
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {/* <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Type
+                      </th> */}
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Chassis Number
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Registration Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Fitness Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Insurance Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Tax Due Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Permit Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        PUCC Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        NP Valid Upto
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Status
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Active
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Added Date
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Created By
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Updated By
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Actions
@@ -276,9 +290,49 @@ export default function VehiclesPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        {/* <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
                             {getVehicleTypeDisplayName(vehicle.type)}
+                          </div>
+                        </td> */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.chassisNumber || <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.registrationDate ? formatDate(vehicle.registrationDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.fitnessDate ? formatDate(vehicle.fitnessDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.insuranceDate ? formatDate(vehicle.insuranceDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.taxDueDate ? formatDate(vehicle.taxDueDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.permitDate ? formatDate(vehicle.permitDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.puccDate ? formatDate(vehicle.puccDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {vehicle.npValidUpto ? formatDate(vehicle.npValidUpto) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -294,47 +348,6 @@ export default function VehiclesPage() {
                           }`}>
                             {vehicle.isActive === true ? 'Active' : 'Inactive'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(vehicle.createdAt)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.cstmCreatedBy ? (
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {getUserDisplayName(vehicle.cstmCreatedBy)}
-                                </span>
-                                {getUserEmail(vehicle.cstmCreatedBy) && (
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {getUserEmail(vehicle.cstmCreatedBy)}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.cstmUpdatedBy ? (
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {getUserDisplayName(vehicle.cstmUpdatedBy)}
-                                </span>
-                                {getUserEmail(vehicle.cstmUpdatedBy) && (
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {getUserEmail(vehicle.cstmUpdatedBy)}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                            )}
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
