@@ -263,9 +263,9 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       newErrors.totalTripDistanceInKM = 'Total Trip Distance must be greater than 0';
     }
     
-    if (!formData.driver) {
-      newErrors.driver = 'Driver is required';
-    }
+    // if (!formData.driver) {
+    //   newErrors.driver = 'Driver is required';
+    // }
     
     if (!formData.vehicle) {
       newErrors.vehicle = 'Vehicle is required';
@@ -600,7 +600,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
         {/* Driver Selection */}
         <div>
           <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Driver <span className="text-red-500">*</span>
+            Driver
           </label>
           <select
             id="driver"
