@@ -71,9 +71,10 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }
   }, [totalTripTimeInHours, formData.estimatedStartTime]);
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
-  const [vehiclesInUse, setVehiclesInUse] = useState<Set<string>>(new Set());
   const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
   const [driversInUse, setDriversInUse] = useState<Set<string>>(new Set());
+  const [driversFetched, setDriversFetched] = useState(false);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   // Fetch load providers
   const fetchLoadProviders = useCallback(async () => {
@@ -91,23 +92,47 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }
   }, []);
 
-  // Fetch data when component mounts
+  // Fetch data automatically when form opens in sequence: vehicles → load providers → drivers
   useEffect(() => {
-    const fetchData = async () => {
+    if (initialFetchDone) return; // Only run once
+    
+    const fetchDataInSequence = async () => {
       try {
-        // Fetch drivers, vehicles, and load providers
-        await Promise.all([
-          getDrivers(),
-          getVehicles(),
-          fetchLoadProviders()
-        ]);
+        setInitialFetchDone(true);
+        
+        // 1. Fetch vehicles first
+        await getVehicles();
+        
+        // 2. Then fetch load providers
+        await fetchLoadProviders();
+        
+        // 3. Finally fetch drivers
+        setDriversFetched(true);
+        await getDrivers();
       } catch (error) {
         console.error('Error fetching data:', error);
+        // Reset flag on error so it can retry
+        setInitialFetchDone(false);
+        setDriversFetched(false);
       }
     };
 
-    fetchData();
-  }, [getDrivers, getVehicles, fetchLoadProviders]);
+    fetchDataInSequence();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Handler to fetch drivers when dropdown is opened (fallback if not fetched automatically)
+  const handleDriverDropdownFocus = useCallback(async () => {
+    if (!driversFetched && !driversLoading) {
+      setDriversFetched(true);
+      try {
+        await getDrivers();
+      } catch (error) {
+        console.error('Error fetching drivers:', error);
+        setDriversFetched(false); // Reset on error so it can retry
+      }
+    }
+  }, [driversFetched, driversLoading, getDrivers]);
 
   // Process vehicles when they change
   useEffect(() => {
@@ -120,42 +145,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       );
       
       setAvailableVehicles(filteredVehicles);
-      
-      // Check which vehicles are currently in use by making API calls
-      const checkVehiclesInUse = async () => {
-        try {
-          const { isVehicleInUse } = await import('@/utils/vehicleInUse');
-          const inUseChecks = await Promise.allSettled(
-            filteredVehicles.map(async (vehicle: Vehicle) => {
-              try {
-                const inUse = await isVehicleInUse(vehicle.documentId);
-                return { vehicleId: vehicle.documentId, inUse };
-              } catch (error) {
-                console.warn(`Error checking vehicle ${vehicle.documentId}:`, error);
-                return { vehicleId: vehicle.documentId, inUse: false };
-              }
-            })
-          );
-          
-          const inUseSet = new Set<string>(
-            inUseChecks
-              .filter((result): result is PromiseFulfilledResult<{ vehicleId: string; inUse: boolean }> => 
-                result.status === 'fulfilled'
-              )
-              .map(result => result.value)
-              .filter((check: { vehicleId: string; inUse: boolean }) => check.inUse)
-              .map((check: { vehicleId: string; inUse: boolean }) => check.vehicleId)
-          );
-          
-          setVehiclesInUse(inUseSet);
-        } catch (error) {
-          console.error('Error checking vehicle availability:', error);
-          // Set empty set to allow form to continue working
-          setVehiclesInUse(new Set());
-        }
-      };
-      
-      checkVehiclesInUse();
     }
   }, [vehicles]);
 
@@ -220,7 +209,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     }));
   };
 
-  // Check if driver or vehicle is available for real-time validation
+  // Check if driver is available for real-time validation
   const checkAvailability = (field: 'driver' | 'vehicle', value: string | null) => {
     if (!value) return;
     
@@ -229,13 +218,9 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
         ...prev, 
         driver: 'Selected driver is currently on another trip' 
       }));
-    } else if (field === 'vehicle' && vehiclesInUse.has(value)) {
-      setErrors(prev => ({ 
-        ...prev, 
-        vehicle: 'Selected vehicle is currently in use' 
-      }));
     } else {
       // Clear the error if the selection is valid
+      // Note: Vehicles are already filtered by status, so no need to check vehiclesInUse
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
@@ -263,10 +248,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       newErrors.totalTripDistanceInKM = 'Total Trip Distance must be greater than 0';
     }
     
-    if (!formData.driver) {
-      newErrors.driver = 'Driver is required';
-    }
-    
     if (!formData.vehicle) {
       newErrors.vehicle = 'Vehicle is required';
     }
@@ -289,10 +270,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       newErrors.driver = 'Selected driver is currently on another trip';
     }
     
-    // Check if selected vehicle is currently in use
-    if (formData.vehicle && vehiclesInUse.has(formData.vehicle)) {
-      newErrors.vehicle = 'Selected vehicle is currently in use';
-    }
+    // Note: Vehicles are already filtered by currentStatus === 'idle', so they should be available
     
     // Validate touching locations if enabled
     if (formData.isTouchingLocationAvailable) {
@@ -318,7 +296,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       return;
     }
 
-    // Double-check availability before creating trip
+    // Double-check driver availability before creating trip
     if (formData.driver && driversInUse.has(formData.driver)) {
       setErrors(prev => ({ 
         ...prev, 
@@ -328,14 +306,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       return;
     }
     
-    if (formData.vehicle && vehiclesInUse.has(formData.vehicle)) {
-      setErrors(prev => ({ 
-        ...prev, 
-        vehicle: 'Selected vehicle is currently in use' 
-      }));
-      showErrorToast('Selected vehicle is currently in use');
-      return;
-    }
+    // Note: Vehicles are already filtered by currentStatus === 'idle', so they should be available
 
     try {
       // Prepare the data for submission
@@ -600,11 +571,12 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
         {/* Driver Selection */}
         <div>
           <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Driver <span className="text-red-500">*</span>
+            Driver
           </label>
           <select
             id="driver"
             value={formData.driver || ''}
+            onFocus={handleDriverDropdownFocus}
             onChange={(e) => {
               const value = e.target.value || null;
               handleInputChange('driver', value);
@@ -615,7 +587,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
             }`}
             disabled={isLoading || driversLoading}
           >
-            <option value="">Select a driver</option>
+            <option value="">Select a driver (Optional)</option>
             {availableDrivers.map((driver) => {
               const isInUse = driversInUse.has(driver.documentId);
               const isDisabled = isInUse;
@@ -668,22 +640,14 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
             disabled={isLoading || vehiclesLoading}
           >
             <option value="">Select a vehicle</option>
-            {availableVehicles.map((vehicle) => {
-              const isInUse = vehiclesInUse.has(vehicle.documentId);
-              const isDisabled = isInUse;
-              
-              return (
-                <option 
-                  key={vehicle.documentId} 
-                  value={vehicle.documentId}
-                  disabled={isDisabled}
-                  className={isDisabled ? 'text-gray-400' : ''}
-                >
-                  {vehicle.vehicleNumber} - {vehicle.model} ({vehicle.type}) 
-                  {isInUse ? ' - Currently in use' : ` - ${vehicle.currentStatus}`}
-                </option>
-              );
-            })}
+            {availableVehicles.map((vehicle) => (
+              <option 
+                key={vehicle.documentId} 
+                value={vehicle.documentId}
+              >
+                {vehicle.vehicleNumber} - {vehicle.model} ({vehicle.type}) - {vehicle.currentStatus}
+              </option>
+            ))}
           </select>
           {errors.vehicle && <p className="mt-1 text-sm text-red-600">{errors.vehicle}</p>}
           {vehiclesLoading && (
@@ -696,7 +660,7 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           )}
           {availableVehicles.length > 0 && (
             <p className="mt-1 text-sm text-gray-500">
-              Vehicles currently in use are disabled and cannot be selected.
+              Only vehicles with &quot;idle&quot; status are shown.
             </p>
           )}
         </div>
