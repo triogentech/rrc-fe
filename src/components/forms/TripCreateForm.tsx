@@ -293,6 +293,54 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     return Object.keys(newErrors).length === 0;
   };
 
+  // Helper function to update vehicle status with retry logic
+  const updateVehicleStatusWithRetry = async (
+    vehicleId: string,
+    maxRetries: number = 3,
+    initialDelay: number = 1000
+  ): Promise<void> => {
+    let lastError: unknown = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Attempting to update vehicle status (attempt ${attempt}/${maxRetries}) for vehicle: ${vehicleId}`);
+        
+        // Use Promise.race to add a timeout
+        const updatePromise = updateVehicle(vehicleId, {
+          currentStatus: VehicleCurrentStatus.ASSIGNED,
+        });
+        
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Vehicle update timeout after 10 seconds')), 10000); // 10 second timeout
+        });
+        
+        const result = await Promise.race([updatePromise, timeoutPromise]);
+        
+        // Check if update was successful (updateVehicle returns Vehicle | null)
+        if (result) {
+          console.log('Vehicle status updated to assigned successfully');
+          return; // Success, exit retry loop
+        } else {
+          throw new Error('Vehicle update returned null');
+        }
+      } catch (error) {
+        lastError = error;
+        console.error(`Error updating vehicle status (attempt ${attempt}/${maxRetries}):`, error);
+        
+        // If this is not the last attempt, wait before retrying with exponential backoff
+        if (attempt < maxRetries) {
+          const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff: 1s, 2s, 4s
+          console.log(`Retrying vehicle status update in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    // If all retries failed, log the error but don't throw
+    console.error('Failed to update vehicle status after all retries:', lastError);
+    showWarningToast('Trip created but failed to update vehicle status. Please update it manually.');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
@@ -336,17 +384,13 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       const newTrip = await createTrip(submitData);
       if (newTrip) {
         // Update vehicle status to "assigned" after successful trip creation
+        // Use non-blocking approach with retry logic to ensure it completes even if there's a timeout
         if (formData.vehicle) {
-          try {
-            await updateVehicle(formData.vehicle, {
-              currentStatus: VehicleCurrentStatus.ASSIGNED,
-            });
-            console.log('Vehicle status updated to assigned successfully');
-          } catch (vehicleError) {
-            console.error('Error updating vehicle status:', vehicleError);
-            showWarningToast('Trip created but failed to update vehicle status');
-            // Don't throw here, as trip was already created successfully
-          }
+          // Fire and forget - don't await, but ensure it runs with retries
+          updateVehicleStatusWithRetry(formData.vehicle).catch((error) => {
+            // This catch is just for logging - the retry function already handles errors
+            console.error('Vehicle status update failed after all retries:', error);
+          });
         }
         
         // Show success notification

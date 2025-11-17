@@ -487,6 +487,9 @@ const TripsPage = () => {
                   End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Advance Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   TAT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -586,25 +589,31 @@ const TripsPage = () => {
                       {formatTripDate(trip.estimatedEndTime)}
                     </div>
                   </td>
-                  {/* 8. Est. TAT in Hours */}
+                  {/* 8. Advance Amount */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {trip.advanceAmount ? `₹${trip.advanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}
+                    </div>
+                  </td>
+                  {/* 9. Est. TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getEstimatedTAT(trip)}
                     </div>
                   </td>
-                  {/* 9. Actual End Time */}
+                  {/* 10. Actual End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                     </div>
                   </td>
-                  {/* 10. Running TAT in Hours */}
+                  {/* 11. Running TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getRunningTAT(trip)}
                     </div>
                   </td>
-                  {/* 11. Status */}
+                  {/* 12. Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={trip.currentStatus}
@@ -619,7 +628,7 @@ const TripsPage = () => {
                       <option value="completed">Completed</option>
                     </select>
                   </td>
-                  {/* 12. Driver */}
+                  {/* 13. Driver */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.driver ? (
@@ -645,7 +654,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 13. Logistics Provider */}
+                  {/* 14. Logistics Provider */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.logisticsProvider ? (
@@ -664,7 +673,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 14. Created By */}
+                  {/* 15. Created By */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.cstmCreatedBy ? (
@@ -683,7 +692,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 15. Updated By */}
+                  {/* 16. Updated By */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.cstmUpdatedBy ? (
@@ -702,7 +711,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 16. Actions */}
+                  {/* 17. Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button 
