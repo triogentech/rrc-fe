@@ -142,7 +142,7 @@ export const vehicleService = {
    * Get all vehicles with pagination
    */
   getVehicles: (params?: PaginationParams & { currentStatus?: string; active?: boolean; search?: string }) => {
-    const { page, limit, search, ...otherParams } = params || {};
+    const { page, limit, search, currentStatus, active, ...otherParams } = params || {};
     
     const queryParams: Record<string, unknown> = {
       populate: '*',
@@ -155,6 +155,16 @@ export const vehicleService = {
     }
     if (limit) {
       queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add currentStatus filter using Strapi filter syntax
+    if (currentStatus) {
+      queryParams['filters[currentStatus][$eq]'] = currentStatus;
+    }
+
+    // Add active filter using Strapi filter syntax
+    if (active !== undefined) {
+      queryParams['filters[isActive][$eq]'] = active;
     }
 
     // Add search filters using Strapi filter syntax with $or and $containsi (case-insensitive)

@@ -25,7 +25,7 @@ interface TripCreateFormProps {
 export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormProps) {
   const { createTrip, isLoading, error: apiError, clearTripsError } = useTrips();
   const { drivers, getDrivers, isLoading: driversLoading } = useDrivers();
-  const { vehicles, getVehicles, isLoading: vehiclesLoading, updateVehicle } = useVehicles();
+  const { vehicles, getVehicles, isLoading: vehiclesLoading, updateVehicle, pagination } = useVehicles();
   const { user } = useReduxAuth();
 
   const [formData, setFormData] = useState<TripCreateRequest & { loadProvider?: string }>({
@@ -75,6 +75,50 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   const [driversInUse, setDriversInUse] = useState<Set<string>>(new Set());
   const [driversFetched, setDriversFetched] = useState(false);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
+  
+  // Vehicle dropdown search state
+  const [vehicleSearchQuery, setVehicleSearchQuery] = useState('');
+  const [isVehicleDropdownOpen, setIsVehicleDropdownOpen] = useState(false);
+  
+  // Vehicle infinite scroll state
+  const [vehiclePageSize, setVehiclePageSize] = useState(10);
+  const [isLoadingMoreVehicles, setIsLoadingMoreVehicles] = useState(false);
+  const [hasMoreVehicles, setHasMoreVehicles] = useState(true);
+  
+  // Vehicle status update loading state
+  const [isUpdatingVehicleStatus, setIsUpdatingVehicleStatus] = useState(false);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        isVehicleDropdownOpen &&
+        !target.closest('#vehicleDropdown') &&
+        !target.closest('#vehicleDropdownButton')
+      ) {
+        setIsVehicleDropdownOpen(false);
+        setVehicleSearchQuery('');
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isVehicleDropdownOpen) {
+        setIsVehicleDropdownOpen(false);
+        setVehicleSearchQuery('');
+      }
+    };
+
+    if (isVehicleDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isVehicleDropdownOpen]);
 
   // Fetch load providers
   const fetchLoadProviders = useCallback(async () => {
@@ -100,8 +144,14 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       try {
         setInitialFetchDone(true);
         
-        // 1. Fetch vehicles first
-        await getVehicles();
+        // 1. Fetch vehicles first - only idle and active vehicles for trip creation
+        // Start with pageSize 10, will load more via infinite scroll
+        await getVehicles({
+          page: 1,
+          limit: 10,
+          currentStatus: 'idle',
+          active: true,
+        });
         
         // 2. Then fetch load providers
         await fetchLoadProviders();
@@ -135,18 +185,174 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
   }, [driversFetched, driversLoading, getDrivers]);
 
   // Process vehicles when they change
+  // Note: Server-side filtering already handles idle status and active vehicles,
+  // but we keep client-side filtering as a safety check
   useEffect(() => {
     if (vehicles && vehicles.length > 0) {
       // Filter vehicles to only show active ones with "idle" status
-      // "assigned" vehicles are already assigned to trips and shouldn't be available for new trips
+      // Server-side filtering should already handle this, but we do it client-side too as a safety check
       const filteredVehicles = vehicles.filter((vehicle: Vehicle) => 
         vehicle.isActive !== false && 
         vehicle.currentStatus === 'idle'
       );
       
-      setAvailableVehicles(filteredVehicles);
+      // If we're loading more, append to existing vehicles, otherwise replace
+      if (isLoadingMoreVehicles) {
+        setAvailableVehicles(prev => {
+          // Avoid duplicates
+          const existingIds = new Set(prev.map(v => v.documentId));
+          const newVehicles = filteredVehicles.filter(v => !existingIds.has(v.documentId));
+          const updated = [...prev, ...newVehicles];
+          
+          // Check if there are more vehicles to load
+          if (pagination) {
+            setHasMoreVehicles(updated.length < pagination.total);
+          }
+          
+          return updated;
+        });
+        setIsLoadingMoreVehicles(false);
+      } else {
+        setAvailableVehicles(filteredVehicles);
+        
+        // Check if there are more vehicles to load
+        if (pagination) {
+          setHasMoreVehicles(filteredVehicles.length < pagination.total);
+        }
+      }
+    } else if (vehicles && vehicles.length === 0 && !isLoadingMoreVehicles) {
+      // Clear available vehicles if no vehicles returned (but not when loading more)
+      setAvailableVehicles([]);
+      setHasMoreVehicles(false);
     }
-  }, [vehicles]);
+  }, [vehicles, pagination, isLoadingMoreVehicles]);
+
+  // Reset pageSize when dropdown closes or search changes
+  useEffect(() => {
+    if (!isVehicleDropdownOpen) {
+      setVehiclePageSize(10);
+      setHasMoreVehicles(true);
+      setIsLoadingMoreVehicles(false);
+    }
+  }, [isVehicleDropdownOpen, vehicleSearchQuery]);
+
+  // Fetch vehicles when dropdown opens (same pattern as vehicles page)
+  useEffect(() => {
+    if (!isVehicleDropdownOpen) {
+      return;
+    }
+
+    // Fetch vehicles when dropdown opens - start with pageSize 10
+    const fetchVehiclesOnOpen = async () => {
+      try {
+        // Reset to initial state
+        setVehiclePageSize(10);
+        setHasMoreVehicles(true);
+        
+        // Use the same API pattern as vehicles page: getVehicles({ page: 1, limit: 10 })
+        // Add currentStatus and active filters for trip creation context
+        await getVehicles({
+          page: 1,
+          limit: 10, // Start with 10 vehicles
+          currentStatus: 'idle', // Only get idle vehicles (required for trip creation)
+          active: true, // Only get active vehicles (required for trip creation)
+        });
+      } catch (error) {
+        console.error('Error fetching vehicles:', error);
+      }
+    };
+
+    // Fetch immediately when dropdown opens
+    fetchVehiclesOnOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVehicleDropdownOpen]);
+
+  // Reset search query when dropdown closes
+  useEffect(() => {
+    if (!isVehicleDropdownOpen && vehicleSearchQuery) {
+      setVehicleSearchQuery('');
+    }
+  }, [isVehicleDropdownOpen, vehicleSearchQuery]);
+
+  // Debounced search for vehicles using server-side API (same as vehicles page)
+  useEffect(() => {
+    if (!isVehicleDropdownOpen || !vehicleSearchQuery.trim()) {
+      return;
+    }
+
+    const searchVehicles = async () => {
+      try {
+        // Reset pageSize when searching
+        setVehiclePageSize(10);
+        setHasMoreVehicles(true);
+        
+        // Use the same search API pattern as vehicles page
+        // The vehicles page calls: getVehicles({ search: searchQuery.trim(), page: 1, limit: 25 })
+        // We add currentStatus and active filters for trip creation context
+        const searchParams: { 
+          page?: number; 
+          limit?: number; 
+          search?: string;
+          currentStatus?: string;
+          active?: boolean;
+        } = {
+          page: 1,
+          limit: 10, // Start with 10 vehicles for search too
+          currentStatus: 'idle', // Only get idle vehicles (required for trip creation)
+          active: true, // Only get active vehicles (required for trip creation)
+          search: vehicleSearchQuery.trim(), // Use the same search parameter format as vehicles page
+        };
+
+        // Call with the same pattern as vehicles page: getVehicles({ search, page, limit, ... })
+        // This will use the same $or and $containsi filters in the service
+        await getVehicles(searchParams);
+      } catch (error) {
+        console.error('Error searching vehicles:', error);
+      }
+    };
+
+    // Debounce search to avoid too many API calls (same as vehicles page pattern)
+    const timeoutId = setTimeout(() => {
+      searchVehicles();
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [vehicleSearchQuery, isVehicleDropdownOpen, getVehicles]);
+
+  // Load more vehicles when scrolling (infinite scroll)
+  const loadMoreVehicles = useCallback(async () => {
+    if (isLoadingMoreVehicles || !hasMoreVehicles || vehiclesLoading) {
+      return;
+    }
+
+    setIsLoadingMoreVehicles(true);
+    const newPageSize = vehiclePageSize + 5; // Increase by 5
+    setVehiclePageSize(newPageSize);
+
+    try {
+      const searchParams: { 
+        page?: number; 
+        limit?: number; 
+        search?: string;
+        currentStatus?: string;
+        active?: boolean;
+      } = {
+        page: 1,
+        limit: newPageSize,
+        currentStatus: 'idle',
+        active: true,
+      };
+
+      if (vehicleSearchQuery.trim()) {
+        searchParams.search = vehicleSearchQuery.trim();
+      }
+
+      await getVehicles(searchParams);
+    } catch (error) {
+      console.error('Error loading more vehicles:', error);
+      setIsLoadingMoreVehicles(false);
+    }
+  }, [vehiclePageSize, hasMoreVehicles, isLoadingMoreVehicles, vehiclesLoading, vehicleSearchQuery, getVehicles]);
 
   // Process drivers when they change
   useEffect(() => {
@@ -293,52 +499,61 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     return Object.keys(newErrors).length === 0;
   };
 
-  // Helper function to update vehicle status with retry logic
-  const updateVehicleStatusWithRetry = async (
+  // Helper function to update vehicle status with retry logic (non-blocking)
+  // This runs completely in the background and won't block the trip creation
+  const updateVehicleStatusWithRetry = (
     vehicleId: string,
-    maxRetries: number = 3,
-    initialDelay: number = 1000
-  ): Promise<void> => {
-    let lastError: unknown = null;
+    maxRetries: number = 2,
+    timeoutMs: number = 5000
+  ): void => {
+    // Set loading state
+    setIsUpdatingVehicleStatus(true);
     
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Attempting to update vehicle status (attempt ${attempt}/${maxRetries}) for vehicle: ${vehicleId}`);
-        
-        // Use Promise.race to add a timeout
-        const updatePromise = updateVehicle(vehicleId, {
-          currentStatus: VehicleCurrentStatus.ASSIGNED,
-        });
-        
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Vehicle update timeout after 10 seconds')), 10000); // 10 second timeout
-        });
-        
-        const result = await Promise.race([updatePromise, timeoutPromise]);
-        
-        // Check if update was successful (updateVehicle returns Vehicle | null)
-        if (result) {
-          console.log('Vehicle status updated to assigned successfully');
-          return; // Success, exit retry loop
-        } else {
-          throw new Error('Vehicle update returned null');
-        }
-      } catch (error) {
-        lastError = error;
-        console.error(`Error updating vehicle status (attempt ${attempt}/${maxRetries}):`, error);
-        
-        // If this is not the last attempt, wait before retrying with exponential backoff
-        if (attempt < maxRetries) {
-          const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff: 1s, 2s, 4s
-          console.log(`Retrying vehicle status update in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+    // Run in background without blocking - use setTimeout to ensure it's truly async
+    setTimeout(async () => {
+      let lastError: unknown = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Attempting to update vehicle status (attempt ${attempt}/${maxRetries}) for vehicle: ${vehicleId}`);
+          
+          // Use Promise.race to add a shorter timeout
+          const updatePromise = updateVehicle(vehicleId, {
+            currentStatus: VehicleCurrentStatus.ASSIGNED,
+          });
+          
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Vehicle update timeout after ${timeoutMs}ms`)), timeoutMs);
+          });
+          
+          const result = await Promise.race([updatePromise, timeoutPromise]);
+          
+          // Check if update was successful (updateVehicle returns Vehicle | null)
+          if (result) {
+            console.log('Vehicle status updated to assigned successfully');
+            setIsUpdatingVehicleStatus(false);
+            return; // Success, exit retry loop
+          } else {
+            throw new Error('Vehicle update returned null');
+          }
+        } catch (error) {
+          lastError = error;
+          console.error(`Error updating vehicle status (attempt ${attempt}/${maxRetries}):`, error);
+          
+          // If this is not the last attempt, wait before retrying with shorter delay
+          if (attempt < maxRetries) {
+            const delay = 1000 * attempt; // Linear backoff: 1s, 2s
+            console.log(`Retrying vehicle status update in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
         }
       }
-    }
-    
-    // If all retries failed, log the error but don't throw
-    console.error('Failed to update vehicle status after all retries:', lastError);
-    showWarningToast('Trip created but failed to update vehicle status. Please update it manually.');
+      
+      // If all retries failed, log the error but don't throw
+      console.error('Failed to update vehicle status after all retries:', lastError);
+      setIsUpdatingVehicleStatus(false);
+      showWarningToast('Trip created but failed to update vehicle status. Please update it manually.');
+    }, 100); // Small delay to ensure trip creation completes first
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -381,21 +596,78 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       
       console.log('Creating trip with data:', submitData);
       
-      const newTrip = await createTrip(submitData);
-      if (newTrip) {
-        // Update vehicle status to "assigned" after successful trip creation
-        // Use non-blocking approach with retry logic to ensure it completes even if there's a timeout
-        if (formData.vehicle) {
-          // Fire and forget - don't await, but ensure it runs with retries
-          updateVehicleStatusWithRetry(formData.vehicle).catch((error) => {
-            // This catch is just for logging - the retry function already handles errors
-            console.error('Vehicle status update failed after all retries:', error);
+      // Update vehicle status OPTIMISTICALLY before creating trip
+      // This ensures vehicle status is updated even if trip creation times out
+      let vehicleUpdateSuccess = false;
+      if (formData.vehicle) {
+        try {
+          setIsUpdatingVehicleStatus(true);
+          console.log('Updating vehicle status to assigned before trip creation...');
+          const vehicleUpdateResult = await updateVehicle(formData.vehicle, {
+            currentStatus: VehicleCurrentStatus.ASSIGNED,
           });
+          if (vehicleUpdateResult) {
+            vehicleUpdateSuccess = true;
+            console.log('Vehicle status updated to assigned successfully');
+          }
+          setIsUpdatingVehicleStatus(false);
+        } catch (vehicleError) {
+          console.error('Failed to update vehicle status before trip creation:', vehicleError);
+          setIsUpdatingVehicleStatus(false);
+          // Continue with trip creation even if vehicle update fails
+        }
+      }
+      
+      // Create trip with timeout handling
+      let newTrip: Trip | null = null;
+      try {
+        // Use Promise.race to add a timeout for trip creation
+        const tripCreationPromise = createTrip(submitData);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Trip creation timeout after 30 seconds')), 30000);
+        });
+        
+        newTrip = await Promise.race([tripCreationPromise, timeoutPromise]);
+      } catch (tripError: unknown) {
+        console.error('Trip creation error or timeout:', tripError);
+        
+        // If vehicle was updated but trip creation failed/timed out, revert vehicle status
+        if (vehicleUpdateSuccess && formData.vehicle) {
+          try {
+            setIsUpdatingVehicleStatus(true);
+            console.log('Reverting vehicle status to idle due to trip creation failure...');
+            await updateVehicle(formData.vehicle, {
+              currentStatus: VehicleCurrentStatus.IDLE,
+            });
+            setIsUpdatingVehicleStatus(false);
+          } catch (revertError) {
+            console.error('Failed to revert vehicle status:', revertError);
+            setIsUpdatingVehicleStatus(false);
+          }
         }
         
+        // Check if it's a timeout error
+        const errorMessage = tripError instanceof Error ? tripError.message : String(tripError);
+        if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+          // Trip might have been created on backend despite timeout
+          showWarningToast('Trip creation is taking longer than expected. Please check if the trip was created successfully.');
+        } else {
+          showErrorToast(tripError);
+        }
+        return;
+      }
+      
+      if (newTrip) {
         // Show success notification
         showSuccessToast(`Trip "${newTrip.tripNumber}" created successfully!`);
         
+        // Vehicle status should already be updated, but ensure it's set if it wasn't
+        if (formData.vehicle && !vehicleUpdateSuccess) {
+          // Retry vehicle update in background if initial update failed
+          updateVehicleStatusWithRetry(formData.vehicle);
+        }
+        
+        // Call onSuccess
         onSuccess(newTrip);
       }
     } catch (err) {
@@ -625,6 +897,177 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           </label>
         </div>
 
+        {/* Vehicle Selection with Search */}
+        <div className="relative">
+          <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Vehicle <span className="text-red-500">*</span>
+          </label>
+          
+          {/* Dropdown Button */}
+          <button
+            id="vehicleDropdownButton"
+            type="button"
+            onClick={() => setIsVehicleDropdownOpen(!isVehicleDropdownOpen)}
+            className={`w-full px-3 py-2 text-left border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white flex items-center justify-between ${
+              errors.vehicle ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            } ${isLoading || vehiclesLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isLoading || vehiclesLoading}
+          >
+            <span className={formData.vehicle ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
+              {(() => {
+                if (!formData.vehicle) return 'Select a vehicle';
+                const selectedVehicle = availableVehicles.find(v => v.documentId === formData.vehicle);
+                return selectedVehicle 
+                  ? `${selectedVehicle.vehicleNumber} - ${selectedVehicle.model}`
+                  : 'Select a vehicle';
+              })()}
+            </span>
+            <svg
+              className={`w-4 h-4 transition-transform ${isVehicleDropdownOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Dropdown Menu */}
+          {isVehicleDropdownOpen && (
+            <div
+              id="vehicleDropdown"
+              className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600"
+            >
+              {/* Search Input */}
+              <div className="p-3 border-b border-gray-200 dark:border-gray-600">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    value={vehicleSearchQuery}
+                    onChange={(e) => setVehicleSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+                    placeholder="Search vehicles..."
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Vehicle List */}
+              <div 
+                className="max-h-60 overflow-y-auto"
+                onScroll={(e) => {
+                  const target = e.target as HTMLElement;
+                  const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+                  // Load more when user scrolls within 50px of bottom
+                  if (scrollBottom < 50 && hasMoreVehicles && !isLoadingMoreVehicles && !vehiclesLoading) {
+                    loadMoreVehicles();
+                  }
+                }}
+              >
+                {vehiclesLoading && availableVehicles.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    Loading vehicles...
+                  </div>
+                ) : (() => {
+                  // Vehicles are already filtered server-side, so just display them
+                  // No need for client-side filtering since we're using the same search API as vehicles page
+                  if (availableVehicles.length === 0) {
+                    return (
+                      <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                        {vehicleSearchQuery ? 'No vehicles found matching your search' : 'No available vehicles found'}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <ul className="p-2 text-sm text-gray-700 dark:text-gray-200">
+                        {availableVehicles.map((vehicle) => (
+                          <li key={vehicle.documentId}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleInputChange('vehicle', vehicle.documentId);
+                                checkAvailability('vehicle', vehicle.documentId);
+                                setIsVehicleDropdownOpen(false);
+                                setVehicleSearchQuery('');
+                              }}
+                              className={`inline-flex items-center w-full px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 ${
+                                formData.vehicle === vehicle.documentId
+                                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                                  : 'text-gray-700 dark:text-gray-200'
+                              }`}
+                            >
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">
+                                  {vehicle.vehicleNumber} - {vehicle.model}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {vehicle.type} • {vehicle.currentStatus}
+                                  {vehicle.chassisNumber && ` • ${vehicle.chassisNumber}`}
+                                </span>
+                              </div>
+                              {formData.vehicle === vehicle.documentId && (
+                                <svg
+                                  className="w-4 h-4 ml-auto"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {isLoadingMoreVehicles && (
+                        <div className="p-3 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                          <svg className="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Loading more vehicles...</span>
+                        </div>
+                      )}
+                      {!hasMoreVehicles && availableVehicles.length > 0 && !isLoadingMoreVehicles && (
+                        <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                          No more vehicles to load
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {errors.vehicle && <p className="mt-1 text-sm text-red-600">{errors.vehicle}</p>}
+          {availableVehicles.length === 0 && !vehiclesLoading && (
+            <p className="mt-1 text-sm text-yellow-600">
+              No available vehicles found. Only vehicles with &quot;idle&quot; status are available for new trips.
+            </p>
+          )}
+          {availableVehicles.length > 0 && (
+            <p className="mt-1 text-sm text-gray-500">
+              Only vehicles with &quot;idle&quot; status are shown. Use search to find vehicles quickly.
+            </p>
+          )}
+        </div>
+
         {/* Driver Selection */}
         <div>
           <label htmlFor="driver" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -674,50 +1117,6 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
           {availableDrivers.length > 0 && (
             <p className="mt-1 text-sm text-gray-500">
               Drivers currently on trips are disabled and cannot be selected.
-            </p>
-          )}
-        </div>
-
-        {/* Vehicle Selection */}
-        <div>
-          <label htmlFor="vehicle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Vehicle <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="vehicle"
-            value={formData.vehicle || ''}
-            onChange={(e) => {
-              const value = e.target.value || null;
-              handleInputChange('vehicle', value);
-              checkAvailability('vehicle', value);
-            }}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-              errors.vehicle ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-            }`}
-            disabled={isLoading || vehiclesLoading}
-          >
-            <option value="">Select a vehicle</option>
-            {availableVehicles.map((vehicle) => (
-              <option 
-                key={vehicle.documentId} 
-                value={vehicle.documentId}
-              >
-                {vehicle.vehicleNumber} - {vehicle.model} ({vehicle.type}) - {vehicle.currentStatus}
-              </option>
-            ))}
-          </select>
-          {errors.vehicle && <p className="mt-1 text-sm text-red-600">{errors.vehicle}</p>}
-          {vehiclesLoading && (
-            <p className="mt-1 text-sm text-gray-500">Loading vehicles...</p>
-          )}
-          {availableVehicles.length === 0 && !vehiclesLoading && (
-            <p className="mt-1 text-sm text-yellow-600">
-              No available vehicles found. Only vehicles with &quot;idle&quot; status are available for new trips.
-            </p>
-          )}
-          {availableVehicles.length > 0 && (
-            <p className="mt-1 text-sm text-gray-500">
-              Only vehicles with &quot;idle&quot; status are shown.
             </p>
           )}
         </div>
@@ -809,27 +1208,42 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
         </div>
       )}
 
+      {/* Vehicle Status Update Loading Indicator */}
+      {isUpdatingVehicleStatus && (
+        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center">
+            <svg className="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Updating vehicle status...
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end space-x-3 mt-6">
         <button
           type="button"
           onClick={onCancel}
-          disabled={isLoading}
+          disabled={isLoading || isUpdatingVehicleStatus}
           className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isUpdatingVehicleStatus}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? (
+          {isLoading || isUpdatingVehicleStatus ? (
             <span className="flex items-center">
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Creating...
+              {isUpdatingVehicleStatus ? 'Updating vehicle...' : 'Creating...'}
             </span>
           ) : (
             'Create Trip'
