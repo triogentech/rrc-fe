@@ -1,7 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { vehicleService } from '../api/services';
 import { ApiErrorHandler } from '../api/utils';
-import type { Vehicle, VehicleCreateRequest, VehicleUpdateRequest, PaginationParams } from '../api/types';
+import type { Vehicle, VehicleCreateRequest, VehicleUpdateRequest, PaginationParams, StrapiResponse } from '../api/types';
 import {
   setLoading,
   setVehicles,
@@ -41,8 +41,48 @@ export const getVehiclesThunk = createAsyncThunk<
       console.log('Redux: Vehicles response:', response);
       
       if (response.success && response.data) {
-        // Pass the Strapi response format since the slice handles both formats
-        dispatch(setVehicles(response.data));
+        // Handle both cases: response.data could be array or StrapiResponse object
+        let strapiResponse: StrapiResponse<Vehicle>;
+        
+        // Type assertion to access meta property
+        const responseWithMeta = response as typeof response & { meta?: { pagination?: { page: number; pageSize: number; pageCount: number; total: number } } };
+        
+        if (Array.isArray(response.data)) {
+          // response.data is an array, construct StrapiResponse from response.meta
+          // Ensure pagination is always defined
+          const pagination = responseWithMeta.meta?.pagination || {
+            page: 1,
+            pageSize: 25,
+            pageCount: 1,
+            total: response.data.length,
+          };
+          
+          strapiResponse = {
+            data: response.data,
+            meta: {
+              pagination: pagination,
+            },
+          };
+        } else if (response.data && typeof response.data === 'object' && 'data' in response.data && 'meta' in response.data) {
+          // response.data is already a StrapiResponse object
+          strapiResponse = response.data as StrapiResponse<Vehicle>;
+        } else {
+          // Fallback: create empty response
+          strapiResponse = {
+            data: [],
+            meta: {
+              pagination: {
+                page: 1,
+                pageSize: 25,
+                pageCount: 1,
+                total: 0,
+              },
+            },
+          };
+        }
+        
+        console.log('Redux: Constructed StrapiResponse:', strapiResponse);
+        dispatch(setVehicles(strapiResponse));
       } else {
         const errorMessage = 'Failed to fetch vehicles';
         dispatch(setError(errorMessage));

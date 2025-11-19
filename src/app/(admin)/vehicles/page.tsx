@@ -33,30 +33,43 @@ export default function VehiclesPage() {
 
   // Fetch vehicles on component mount
   useEffect(() => {
-    getVehicles();
+    getVehicles({ page: 1, limit: 25 });
   }, [getVehicles]);
+
+  // Debug: Log pagination changes
+  useEffect(() => {
+    console.log('Vehicles page - Pagination state:', pagination);
+  }, [pagination]);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      getVehicles({ search: searchQuery.trim() });
+      getVehicles({ search: searchQuery.trim(), page: 1, limit: 25 });
     } else {
-      getVehicles();
+      getVehicles({ page: 1, limit: 25 });
     }
   };
 
   // Handle clear search
   const handleClearSearch = () => {
     setSearchQuery('');
-    getVehicles();
+    getVehicles({ page: 1, limit: 25 });
   };
 
   // Handle vehicle creation success
   const handleVehicleCreated = (vehicle: Vehicle) => {
     console.log('Vehicle created successfully:', vehicle);
-    // Refresh the vehicles list
-    getVehicles();
+    // Refresh the vehicles list, preserve current page if available
+    const currentPage = pagination?.page || 1;
+    const params: { page: number; limit?: number; search?: string } = {
+      page: currentPage,
+      limit: pagination?.pageSize || 25,
+    };
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
+    }
+    getVehicles(params);
     handleSuccess(vehicle);
   };
 
@@ -87,8 +100,16 @@ export default function VehiclesPage() {
   // Handle vehicle update success
   const handleVehicleUpdated = (vehicle: Vehicle) => {
     console.log('Vehicle updated successfully:', vehicle);
-    // Refresh the vehicles list
-    getVehicles();
+    // Refresh the vehicles list, preserve current page if available
+    const currentPage = pagination?.page || 1;
+    const params: { page: number; limit?: number; search?: string } = {
+      page: currentPage,
+      limit: pagination?.pageSize || 25,
+    };
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
+    }
+    getVehicles(params);
     handleCloseEditModal();
   };
 
@@ -114,8 +135,16 @@ export default function VehiclesPage() {
       const success = await deleteVehicle(selectedVehicle.documentId);
       if (success) {
         console.log('Vehicle deleted successfully');
-        // Refresh the vehicles list
-        getVehicles();
+        // Refresh the vehicles list, preserve current page if available
+        const currentPage = pagination?.page || 1;
+        const params: { page: number; limit?: number; search?: string } = {
+          page: currentPage,
+          limit: pagination?.pageSize || 25,
+        };
+        if (searchQuery.trim()) {
+          params.search = searchQuery.trim();
+        }
+        getVehicles(params);
         handleCloseDeleteModal();
       }
     } catch (error) {
@@ -154,24 +183,33 @@ export default function VehiclesPage() {
               {/* Search and Actions */}
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <form onSubmit={handleSearch} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search vehicles..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search by vehicle number, model, chassis, or engine number..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-3 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
                   >
-                    Search
+                    {isLoading ? 'Searching...' : 'Search'}
                   </button>
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={handleClearSearch}
-                      className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
                     >
                       Clear
                     </button>
@@ -214,6 +252,26 @@ export default function VehiclesPage() {
               </div>
             )}
 
+            {/* Search Active Indicator */}
+            {searchQuery.trim() && !isLoading && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <p className="text-blue-800 dark:text-blue-200 text-sm">
+                    Searching for: <span className="font-semibold">&quot;{searchQuery}&quot;</span>
+                    {pagination && pagination.total > 0 && (
+                      <span className="ml-2">({pagination.total} result{pagination.total !== 1 ? 's' : ''} found)</span>
+                    )}
+                  </p>
+                  <button
+                    onClick={handleClearSearch}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Vehicles List */}
             {!isLoading && vehicles.length === 0 && !error && (
               <div className="text-center py-8">
@@ -221,8 +279,12 @@ export default function VehiclesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0M15 17a2 2 0 104 0" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No vehicles found</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by adding a new vehicle.</p>
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  {searchQuery.trim() ? 'No vehicles found matching your search' : 'No vehicles found'}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {searchQuery.trim() ? 'Try a different search term.' : 'Get started by adding a new vehicle.'}
+                </p>
               </div>
             )}
 
@@ -396,12 +458,35 @@ export default function VehiclesPage() {
                 </p>
                 <div className="flex gap-2">
                   <button
+                    onClick={() => {
+                      const params: { page: number; limit?: number; search?: string } = {
+                        page: pagination.page - 1,
+                        limit: pagination.pageSize,
+                      };
+                      if (searchQuery.trim()) {
+                        params.search = searchQuery.trim();
+                      }
+                      getVehicles(params);
+                    }}
                     disabled={pagination.page === 1}
                     className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
+                  <span className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Page {pagination.page} of {pagination.pageCount}
+                  </span>
                   <button
+                    onClick={() => {
+                      const params: { page: number; limit?: number; search?: string } = {
+                        page: pagination.page + 1,
+                        limit: pagination.pageSize,
+                      };
+                      if (searchQuery.trim()) {
+                        params.search = searchQuery.trim();
+                      }
+                      getVehicles(params);
+                    }}
                     disabled={pagination.page === pagination.pageCount}
                     className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >

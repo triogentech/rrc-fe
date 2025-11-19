@@ -142,12 +142,33 @@ export const vehicleService = {
    * Get all vehicles with pagination
    */
   getVehicles: (params?: PaginationParams & { currentStatus?: string; active?: boolean; search?: string }) => {
-    console.log('Vehicle service: Getting vehicles with params:', params);
-    const queryParams = {
-      ...params,
-      populate: '*'
+    const { page, limit, search, ...otherParams } = params || {};
+    
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
     };
-    console.log('Vehicle service: Query params with populate:', queryParams);
+
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add search filters using Strapi filter syntax with $or and $containsi (case-insensitive)
+    // Search across multiple fields: vehicleNumber, model, chassisNumber, engineNumber
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      queryParams['filters[$or][0][vehicleNumber][$containsi]'] = searchTerm;
+      queryParams['filters[$or][1][model][$containsi]'] = searchTerm;
+      queryParams['filters[$or][2][chassisNumber][$containsi]'] = searchTerm;
+      queryParams['filters[$or][3][engineNumber][$containsi]'] = searchTerm;
+    }
+
+    console.log('Vehicle service: Getting vehicles with params:', params);
+    console.log('Vehicle service: Query params with pagination and filters:', queryParams);
     return api.get<StrapiResponse<Vehicle>>('/api/vehicles', queryParams);
   },
 
@@ -210,8 +231,33 @@ export const vehicleService = {
   /**
    * Search vehicles
    */
-  searchVehicles: (query: string, params?: PaginationParams) =>
-    api.get<StrapiResponse<Vehicle>>('/api/vehicles', { search: query, ...params }),
+  searchVehicles: (query: string, params?: PaginationParams) => {
+    const { page, limit, ...otherParams } = params || {};
+    const queryParams: Record<string, unknown> = {
+      populate: '*',
+      ...otherParams
+    };
+
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
+    }
+
+    // Add search filters using Strapi filter syntax with $or and $containsi (case-insensitive)
+    // Search across multiple fields: vehicleNumber, model, chassisNumber, engineNumber
+    if (query && query.trim()) {
+      const searchTerm = query.trim();
+      queryParams['filters[$or][0][vehicleNumber][$containsi]'] = searchTerm;
+      queryParams['filters[$or][1][model][$containsi]'] = searchTerm;
+      queryParams['filters[$or][2][chassisNumber][$containsi]'] = searchTerm;
+      queryParams['filters[$or][3][engineNumber][$containsi]'] = searchTerm;
+    }
+
+    return api.get<StrapiResponse<Vehicle>>('/api/vehicles', queryParams);
+  },
 
   /**
    * Get vehicles by status
