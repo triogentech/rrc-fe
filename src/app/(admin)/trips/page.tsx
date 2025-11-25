@@ -157,6 +157,15 @@ const TripsPage = () => {
     return 'N/A';
   };
 
+  // Calculate balance amount (Freight Amount - Advance Amount)
+  const getBalanceAmount = (trip: Trip): string => {
+    const freightAmount = trip.freightTotalAmount || 0;
+    const advanceAmount = trip.advanceAmount || 0;
+    const balanceAmount = freightAmount - advanceAmount;
+    
+    return `₹${balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
 
   // Update document title based on current status
   useEffect(() => {
@@ -475,10 +484,10 @@ const TripsPage = () => {
                   Trip From
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Distance (KM)
+                  Trip To
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Trip To
+                  Distance (KM)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Start Time
@@ -487,7 +496,13 @@ const TripsPage = () => {
                   End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Freight Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Advance Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Balance Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   TAT
@@ -561,13 +576,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 4. Distance (KM) */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
-                    </div>
-                  </td>
-                  {/* 5. Trip To */}
+                  {/* 4. Trip To */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                     {trip.endPoint ? (
@@ -575,6 +584,12 @@ const TripsPage = () => {
                       ) : (
                         <span className="text-gray-500 dark:text-gray-400">N/A</span>
                       )}
+                    </div>
+                  </td>
+                  {/* 5. Distance (KM) */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
                     </div>
                   </td>
                   {/* 6. Start Time */}
@@ -589,31 +604,43 @@ const TripsPage = () => {
                       {formatTripDate(trip.estimatedEndTime)}
                     </div>
                   </td>
-                  {/* 8. Advance Amount */}
+                  {/* 8. Freight Amount */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {trip.advanceAmount ? `₹${trip.advanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}
+                      {`₹${(trip.freightTotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </div>
                   </td>
-                  {/* 9. Est. TAT in Hours */}
+                  {/* 9. Advance Amount */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {`₹${(trip.advanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    </div>
+                  </td>
+                  {/* 10. Balance Amount */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {getBalanceAmount(trip)}
+                    </div>
+                  </td>
+                  {/* 11. Est. TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getEstimatedTAT(trip)}
                     </div>
                   </td>
-                  {/* 10. Actual End Time */}
+                  {/* 12. Actual End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
                     </div>
                   </td>
-                  {/* 11. Running TAT in Hours */}
+                  {/* 13. Running TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getRunningTAT(trip)}
                     </div>
                   </td>
-                  {/* 12. Status */}
+                  {/* 14. Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={trip.currentStatus}
@@ -628,7 +655,7 @@ const TripsPage = () => {
                       <option value="completed">Completed</option>
                     </select>
                   </td>
-                  {/* 13. Driver */}
+                  {/* 15. Driver */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.driver ? (
@@ -654,7 +681,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 14. Logistics Provider */}
+                  {/* 16. Logistics Provider */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.logisticsProvider ? (
@@ -673,7 +700,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 15. Created By */}
+                  {/* 17. Created By */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.cstmCreatedBy ? (
@@ -692,7 +719,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 16. Updated By */}
+                  {/* 18. Updated By */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.cstmUpdatedBy ? (
@@ -711,7 +738,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 17. Actions */}
+                  {/* 19. Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button 
