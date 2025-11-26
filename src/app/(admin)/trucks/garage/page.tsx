@@ -4,6 +4,7 @@ import { garageService } from '@/store/api/services';
 import type { Garage } from '@/store/api/types';
 import { showErrorToast, showSuccessToast } from '@/utils/toastHelper';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
 import GarageCreateModal from '@/components/modals/GarageCreateModal';
 import GarageEditModal from '@/components/modals/GarageEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
@@ -146,13 +147,6 @@ export default function GaragePage() {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   // Get city name from city object or string
   const getCityName = (city: string | { name?: string } | null | undefined): string => {
@@ -329,7 +323,7 @@ export default function GaragePage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(garage.createdAt)}
+                            {formatDateTimeToIST(garage.createdAt)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

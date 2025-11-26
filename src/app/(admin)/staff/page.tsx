@@ -8,6 +8,7 @@ import StaffEditModal from '@/components/modals/StaffEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Staff } from '@/store/api/types';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
 
 export default function StaffPage() {
   const {
@@ -127,13 +128,6 @@ export default function StaffPage() {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
@@ -277,7 +271,7 @@ export default function StaffPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(staff.createdAt)}
+                            {formatDateTimeToIST(staff.createdAt)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

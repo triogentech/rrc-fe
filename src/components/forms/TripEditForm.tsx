@@ -33,6 +33,9 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
     driver: typeof trip.driver === 'string' ? trip.driver : trip.driver?.documentId,
     vehicle: typeof trip.vehicle === 'string' ? trip.vehicle : trip.vehicle?.documentId,
     logisticsProvider: typeof trip.logisticsProvider === 'string' ? trip.logisticsProvider : trip.logisticsProvider?.documentId,
+    // New fields
+    freightTotalAmount: trip.freightTotalAmount || 0,
+    advanceAmount: trip.advanceAmount || 0,
     // Custom fields
     cstmCreatedBy: typeof trip.cstmCreatedBy === 'string' ? trip.cstmCreatedBy : trip.cstmCreatedBy?.documentId,
     cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -101,6 +104,9 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
       driver: typeof trip.driver === 'string' ? trip.driver : trip.driver?.documentId,
       vehicle: typeof trip.vehicle === 'string' ? trip.vehicle : trip.vehicle?.documentId,
       logisticsProvider: typeof trip.logisticsProvider === 'string' ? trip.logisticsProvider : trip.logisticsProvider?.documentId,
+      // New fields
+      freightTotalAmount: trip.freightTotalAmount || 0,
+      advanceAmount: trip.advanceAmount || 0,
       // Custom fields
       cstmCreatedBy: typeof trip.cstmCreatedBy === 'string' ? trip.cstmCreatedBy : trip.cstmCreatedBy?.documentId,
       cstmUpdatedBy: user?.documentId || user?.id || '',
@@ -124,11 +130,28 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
       newErrors.tripNumber = 'Trip Number is required';
     }
     
-    // Note: estimatedStartTime, estimatedEndTime, startPoint, endPoint, 
-    // startPointCoords, and endPointCoords are read-only fields and don't need validation
+    if (!formData.estimatedStartTime) {
+      newErrors.estimatedStartTime = 'Estimated Start Time is required';
+    }
+    
+    if (!formData.startPoint?.trim()) {
+      newErrors.startPoint = 'Start Point is required';
+    }
+    
+    if (!formData.endPoint?.trim()) {
+      newErrors.endPoint = 'End Point is required';
+    }
     
     if (!formData.totalTripDistanceInKM || formData.totalTripDistanceInKM <= 0) {
       newErrors.totalTripDistanceInKM = 'Total Trip Distance must be greater than 0';
+    }
+    
+    if (!formData.freightTotalAmount || formData.freightTotalAmount <= 0) {
+      newErrors.freightTotalAmount = 'Freight Total Amount is required and must be greater than 0';
+    }
+    
+    if (formData.advanceAmount === undefined || formData.advanceAmount === null || formData.advanceAmount < 0) {
+      newErrors.advanceAmount = 'Advance Amount is required and must be 0 or greater';
     }
     
     setErrors(newErrors);
@@ -215,12 +238,12 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
           <input
             type="datetime-local"
             id="estimatedStartTime"
-            value={formData.estimatedStartTime || ''}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-            disabled={true}
-            readOnly
+            value={formData.estimatedStartTime ? (formData.estimatedStartTime.includes('T') ? formData.estimatedStartTime.slice(0, 16) : new Date(formData.estimatedStartTime).toISOString().slice(0, 16)) : ''}
+            onChange={(e) => handleInputChange('estimatedStartTime', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This field cannot be edited</p>
+          {errors.estimatedStartTime && <p className="mt-1 text-sm text-red-600">{errors.estimatedStartTime}</p>}
         </div>
 
         {/* Estimated End Time */}
@@ -231,12 +254,11 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
           <input
             type="datetime-local"
             id="estimatedEndTime"
-            value={formData.estimatedEndTime || ''}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-            disabled={true}
-            readOnly
+            value={formData.estimatedEndTime ? (formData.estimatedEndTime.includes('T') ? formData.estimatedEndTime.slice(0, 16) : new Date(formData.estimatedEndTime).toISOString().slice(0, 16)) : ''}
+            onChange={(e) => handleInputChange('estimatedEndTime', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This field cannot be edited</p>
         </div>
 
         {/* Start Point */}
@@ -248,11 +270,12 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
             type="text"
             id="startPoint"
             value={formData.startPoint || ''}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-            disabled={true}
-            readOnly
+            onChange={(e) => handleInputChange('startPoint', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., Mumbai"
+            disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This field cannot be edited</p>
+          {errors.startPoint && <p className="mt-1 text-sm text-red-600">{errors.startPoint}</p>}
         </div>
 
         {/* End Point */}
@@ -264,11 +287,12 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
             type="text"
             id="endPoint"
             value={formData.endPoint || ''}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-            disabled={true}
-            readOnly
+            onChange={(e) => handleInputChange('endPoint', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., Delhi"
+            disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This field cannot be edited</p>
+          {errors.endPoint && <p className="mt-1 text-sm text-red-600">{errors.endPoint}</p>}
         </div>
 
         {/* Total Trip Distance */}
@@ -288,6 +312,56 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
             disabled={isLoading}
           />
           {errors.totalTripDistanceInKM && <p className="mt-1 text-sm text-red-600">{errors.totalTripDistanceInKM}</p>}
+        </div>
+
+        {/* Freight Total Amount */}
+        <div>
+          <label htmlFor="freightTotalAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Freight Total Amount (₹) *
+          </label>
+          <input
+            type="number"
+            id="freightTotalAmount"
+            value={formData.freightTotalAmount || ''}
+            onChange={(e) => handleInputChange('freightTotalAmount', parseFloat(e.target.value) || 0)}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.freightTotalAmount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="e.g., 50000"
+            min="0"
+            step="0.01"
+            disabled={isLoading}
+          />
+          {errors.freightTotalAmount && <p className="mt-1 text-sm text-red-600">{errors.freightTotalAmount}</p>}
+        </div>
+
+        {/* Advance Amount */}
+        <div>
+          <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Advance Amount (₹) *
+          </label>
+          <input
+            type="number"
+            id="advanceAmount"
+            value={formData.advanceAmount !== undefined && formData.advanceAmount !== null ? formData.advanceAmount : ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                handleInputChange('advanceAmount', null);
+              } else {
+                const numValue = parseFloat(value);
+                handleInputChange('advanceAmount', isNaN(numValue) ? null : numValue);
+              }
+            }}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+              errors.advanceAmount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            }`}
+            placeholder="e.g., 10000"
+            min="0"
+            step="0.01"
+            disabled={isLoading}
+          />
+          {errors.advanceAmount && <p className="mt-1 text-sm text-red-600">{errors.advanceAmount}</p>}
         </div>
 
         {/* Driver Selection */}

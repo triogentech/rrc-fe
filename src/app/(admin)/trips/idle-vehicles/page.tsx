@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import type { Vehicle, Trip } from '@/store/api/types';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
 
 export default function IdleVehiclesPage() {
   const {
@@ -110,13 +111,6 @@ export default function IdleVehiclesPage() {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
@@ -337,7 +331,7 @@ export default function IdleVehiclesPage() {
                                       <div>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">Completed On</p>
                                         <p className="text-sm text-gray-900 dark:text-white">
-                                          {trip.actualEndTime ? formatDate(trip.actualEndTime) : 'N/A'}
+                                          {formatDateTimeToIST(trip.actualEndTime)}
                                         </p>
                                       </div>
                                     </div>

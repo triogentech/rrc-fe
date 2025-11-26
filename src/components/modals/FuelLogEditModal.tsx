@@ -2,12 +2,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fuelLogService, tripService, fuelStationService } from '@/store/api/services';
 import { useVehicles } from '@/store/hooks/useVehicles';
-import type { Vehicle } from '@/store/api/types';
+import type { Vehicle, FuelLog } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 
-interface FuelLogCreateModalProps {
+interface FuelLogEditModalProps {
   isOpen: boolean;
   onClose: () => void;
+  fuelLog: FuelLog & Record<string, unknown> | null;
   onSuccess: () => void;
 }
 
@@ -22,9 +23,10 @@ interface FuelLogFormData {
   vehicle: string;
 }
 
-const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
+const FuelLogEditModal: React.FC<FuelLogEditModalProps> = ({
   isOpen,
   onClose,
+  fuelLog,
   onSuccess,
 }) => {
   const { vehicles, getVehicles, isLoading: vehiclesLoading, pagination } = useVehicles();
@@ -54,13 +56,57 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
   const [isLoadingMoreVehicles, setIsLoadingMoreVehicles] = useState(false);
   const [hasMoreVehicles, setHasMoreVehicles] = useState(true);
 
+  // Initialize form data when fuelLog changes
   useEffect(() => {
-    if (isOpen) {
+    if (fuelLog && isOpen) {
+      const logData = fuelLog as Record<string, unknown>;
+      
+      // Format date
+      let dateValue = '';
+      if (logData.date) {
+        const date = typeof logData.date === 'string' ? new Date(logData.date) : logData.date as Date;
+        if (!isNaN(date.getTime())) {
+          dateValue = date.toISOString().split('T')[0];
+        }
+      }
+
+      // Get trip documentId
+      let tripValue = '';
+      if (logData.trip && typeof logData.trip === 'object') {
+        const tripObj = logData.trip as Record<string, unknown>;
+        tripValue = String(tripObj.documentId || '');
+      }
+
+      // Get fuelStation documentId
+      let fuelStationValue = '';
+      if (logData.fuelStation && typeof logData.fuelStation === 'object') {
+        const stationObj = logData.fuelStation as Record<string, unknown>;
+        fuelStationValue = String(stationObj.documentId || '');
+      }
+
+      // Get vehicle documentId
+      let vehicleValue = '';
+      if (logData.vehicle && typeof logData.vehicle === 'object') {
+        const vehicleObj = logData.vehicle as Record<string, unknown>;
+        vehicleValue = String(vehicleObj.documentId || '');
+      }
+
+      setFormData({
+        date: dateValue || new Date().toISOString().split('T')[0],
+        fuelQuantityInLtr: String(logData.fuelQuantityInLtr || ''),
+        fuelType: String(logData.fuelType || 'diesel'),
+        rate: String(logData.rate || ''),
+        amount: String(logData.amount || ''),
+        trip: tripValue,
+        fuelStation: fuelStationValue,
+        vehicle: vehicleValue,
+      });
+
       fetchOptions();
       // Fetch vehicles when modal opens
       getVehicles({ page: 1, limit: 10, active: true });
     }
-  }, [isOpen, getVehicles]);
+  }, [fuelLog, isOpen, getVehicles]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -311,6 +357,8 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!fuelLog) return;
+
     if (!validateForm()) {
       showErrorToast('Please fill in all required fields correctly');
       return;
@@ -328,32 +376,28 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
 
       if (formData.trip) {
         logData.trip = formData.trip;
+      } else {
+        logData.trip = null;
       }
       if (formData.fuelStation) {
         logData.fuelStation = formData.fuelStation;
+      } else {
+        logData.fuelStation = null;
       }
       if (formData.vehicle) {
         logData.vehicle = formData.vehicle;
+      } else {
+        logData.vehicle = null;
       }
 
-      await fuelLogService.createFuelLog(logData);
-      showSuccessToast('Fuel log created successfully!');
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        fuelQuantityInLtr: '',
-        fuelType: 'diesel',
-        rate: '',
-        amount: '',
-        trip: '',
-        fuelStation: '',
-        vehicle: '',
-      });
+      await fuelLogService.updateFuelLog(fuelLog.documentId, logData);
+      showSuccessToast('Fuel log updated successfully!');
       setErrors({});
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Failed to create fuel log:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create fuel log';
+      console.error('Failed to update fuel log:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update fuel log';
       showErrorToast(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -362,16 +406,6 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        fuelQuantityInLtr: '',
-        fuelType: 'diesel',
-        rate: '',
-        amount: '',
-        trip: '',
-        fuelStation: '',
-        vehicle: '',
-      });
       setErrors({});
       setIsVehicleDropdownOpen(false);
       setVehicleSearchQuery('');
@@ -379,13 +413,13 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !fuelLog) return null;
 
   return (
     <div className="fixed inset-0 bg-[#00000074] bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create Fuel Log</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Fuel Log</h2>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
@@ -549,9 +583,21 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
                   {(() => {
                     if (!formData.vehicle) return 'Select a vehicle (optional)';
                     const selectedVehicle = availableVehicles.find(v => v.documentId === formData.vehicle);
-                    return selectedVehicle 
-                      ? `${selectedVehicle.vehicleNumber} - ${selectedVehicle.model}`
-                      : 'Select a vehicle (optional)';
+                    if (selectedVehicle) {
+                      return `${selectedVehicle.vehicleNumber} - ${selectedVehicle.model}`;
+                    }
+                    // If vehicle is selected but not in availableVehicles, try to get it from fuelLog
+                    if (fuelLog) {
+                      const logData = fuelLog as Record<string, unknown>;
+                      if (logData.vehicle && typeof logData.vehicle === 'object') {
+                        const vehicleObj = logData.vehicle as Record<string, unknown>;
+                        const vehicleNumber = String(vehicleObj.vehicleNumber || '');
+                        if (vehicleNumber) {
+                          return vehicleNumber;
+                        }
+                      }
+                    }
+                    return 'Select a vehicle (optional)';
                   })()}
                 </span>
                 <svg
@@ -730,7 +776,7 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {isSubmitting ? 'Creating...' : 'Create Fuel Log'}
+              {isSubmitting ? 'Updating...' : 'Update Fuel Log'}
             </button>
           </div>
         </form>
@@ -739,5 +785,5 @@ const FuelLogCreateModal: React.FC<FuelLogCreateModalProps> = ({
   );
 };
 
-export default FuelLogCreateModal;
+export default FuelLogEditModal;
 

@@ -4,6 +4,7 @@ import { garageLogService } from '@/store/api/services';
 import type { GarageLog, User } from '@/store/api/types';
 import { showErrorToast, showSuccessToast } from '@/utils/toastHelper';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
 import GarageLogCreateModal from '@/components/modals/GarageLogCreateModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 
@@ -94,20 +95,6 @@ export default function GarageLogsPage() {
     fetchLogs({ page: 1 });
   };
 
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateString;
-    }
-  };
 
   const handleLogCreated = () => {
     fetchLogs({ page: pagination?.page || 1, search: searchQuery || undefined });
@@ -156,7 +143,7 @@ export default function GarageLogsPage() {
     
     // Handle date fields
     if (key.includes('At') || key.includes('Date') || key.includes('Time')) {
-      return formatDate(String(value));
+      return formatDateTimeToIST(String(value));
     }
     
     // Handle boolean values

@@ -1,19 +1,24 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useTransactions, getTransactionStatusColor, getTransactionTypeColor, getTransactionMethodIcon, formatCurrency, formatDate } from '@/store/hooks/useTransactions';
+import { useTransactions, getTransactionStatusColor, getTransactionTypeColor, getTransactionMethodIcon, formatCurrency } from '@/store/hooks/useTransactions';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 import TransactionCreateModal from '@/components/modals/TransactionCreateModal';
 import TransactionEditModal from '@/components/modals/TransactionEditModal';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Transaction } from '@/store/api/types';
 
 export default function ExpensePage() {
-  const { transactions, isLoading, error, pagination, getTransactions } = useTransactions();
+  const { transactions, isLoading, error, pagination, getTransactions, deleteTransaction } = useTransactions();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
   // Debounced search effect
@@ -125,6 +130,42 @@ export default function ExpensePage() {
     handleCloseEditModal();
   };
 
+  // Handle delete transaction
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
+    if (!selectedTransaction) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteTransaction(selectedTransaction.documentId);
+      if (success) {
+        showSuccessToast('Transaction deleted successfully!');
+        // Refresh the transactions list
+        getTransactions({
+          page: pagination?.page || 1,
+          search: searchTerm || undefined,
+          status: statusFilter || undefined,
+          type: typeFilter || undefined,
+          method: methodFilter || undefined,
+        });
+        setIsDeleteModalOpen(false);
+        setSelectedTransaction(null);
+      } else {
+        showErrorToast('Failed to delete transaction');
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete transaction';
+      showErrorToast(errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
       {/* Header Section */}
@@ -189,7 +230,7 @@ export default function ExpensePage() {
                   value={searchTerm}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Search transactions..."
+                  placeholder="Search by Description..."
                   className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 {isSearching && (
@@ -388,7 +429,7 @@ export default function ExpensePage() {
                         {getUserDisplayName(transaction.cstmCreatedBy)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(transaction.createdAt)}
+                        {formatDateTimeToIST(transaction.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -399,6 +440,15 @@ export default function ExpensePage() {
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTransaction(transaction)}
+                            className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                            title="Delete transaction"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>
                         </div>
@@ -455,6 +505,19 @@ export default function ExpensePage() {
         onClose={handleCloseEditModal}
         transaction={selectedTransaction}
         onSuccess={handleTransactionUpdated}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setSelectedTransaction(null); setIsDeleting(false); }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete transaction "${selectedTransaction?.transactionId}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+        type="danger"
       />
     </div>
   );

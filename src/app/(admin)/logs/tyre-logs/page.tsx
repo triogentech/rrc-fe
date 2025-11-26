@@ -4,6 +4,7 @@ import { tyreLogService } from '@/store/api/services';
 import type { TyreLog, User } from '@/store/api/types';
 import { showErrorToast, showSuccessToast } from '@/utils/toastHelper';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST, formatDateToIST } from '@/utils/dateFormatter';
 import TyreLogCreateModal from '@/components/modals/TyreLogCreateModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 
@@ -94,38 +95,10 @@ export default function TyreLogsPage() {
     fetchLogs({ page: 1 });
   };
 
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
   const getVehicleNumber = (vehicle: unknown): string => {
     if (!vehicle || typeof vehicle !== 'object') return 'N/A';
     const vehicleObj = vehicle as Record<string, unknown>;
     return String(vehicleObj.vehicleNumber || 'N/A');
-  };
-
-  const formatDateOnly = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
   };
 
   const handleLogCreated = () => {
@@ -309,7 +282,7 @@ export default function TyreLogsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900 dark:text-white">
-                              {formatDateOnly(logData.fitmentDate as string | undefined)}
+                              {formatDateToIST(logData.fitmentDate as string | undefined)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -365,7 +338,7 @@ export default function TyreLogsPage() {
                           </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDate(logData.createdAt as string | undefined)}
+                            {formatDateTimeToIST(logData.createdAt as string | undefined)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

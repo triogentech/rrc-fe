@@ -4,7 +4,9 @@ import { fuelLogService } from '@/store/api/services';
 import type { FuelLog, User } from '@/store/api/types';
 import { showErrorToast, showSuccessToast } from '@/utils/toastHelper';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST, formatDateToIST } from '@/utils/dateFormatter';
 import FuelLogCreateModal from '@/components/modals/FuelLogCreateModal';
+import FuelLogEditModal from '@/components/modals/FuelLogEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 
 export default function FuelLogsPage() {
@@ -13,6 +15,7 @@ export default function FuelLogsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<FuelLog & Record<string, unknown> | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -94,21 +97,6 @@ export default function FuelLogsPage() {
     fetchLogs({ page: 1 });
   };
 
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
   const getTripNumber = (trip: unknown): string => {
     if (!trip || typeof trip !== 'object') return 'N/A';
     const tripObj = trip as Record<string, unknown>;
@@ -121,21 +109,23 @@ export default function FuelLogsPage() {
     return String(stationObj.name || 'N/A');
   };
 
-  const formatDateOnly = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
+  const getVehicleNumber = (vehicle: unknown): string => {
+    if (!vehicle || typeof vehicle !== 'object') return 'N/A';
+    const vehicleObj = vehicle as Record<string, unknown>;
+    return String(vehicleObj.vehicleNumber || 'N/A');
   };
 
   const handleLogCreated = () => {
     fetchLogs({ page: pagination?.page || 1, search: searchQuery || undefined });
+  };
+
+  const handleLogUpdated = () => {
+    fetchLogs({ page: pagination?.page || 1, search: searchQuery || undefined });
+  };
+
+  const handleEditLog = (log: FuelLog & Record<string, unknown>) => {
+    setSelectedLog(log);
+    setIsEditModalOpen(true);
   };
 
   const handleDeleteLog = (log: FuelLog & Record<string, unknown>) => {
@@ -281,6 +271,9 @@ export default function FuelLogsPage() {
                         Amount
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Vehicle
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Trip
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -304,7 +297,7 @@ export default function FuelLogsPage() {
                         <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900 dark:text-white">
-                              {formatDateOnly(logData.date as string | undefined)}
+                              {formatDateToIST(logData.date as string | undefined)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -325,6 +318,11 @@ export default function FuelLogsPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900 dark:text-white">
                               ₹{String(logData.amount || 'N/A')}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 dark:text-white">
+                              {getVehicleNumber(logData.vehicle)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -355,16 +353,24 @@ export default function FuelLogsPage() {
                           </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDate(logData.createdAt as string | undefined)}
+                            {formatDateTimeToIST(logData.createdAt as string | undefined)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleDeleteLog(log)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => handleEditLog(log)}
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLog(log)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -405,6 +411,13 @@ export default function FuelLogsPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleLogCreated}
+      />
+
+      <FuelLogEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => { setIsEditModalOpen(false); setSelectedLog(null); }}
+        fuelLog={selectedLog}
+        onSuccess={handleLogUpdated}
       />
 
       <ConfirmationModal

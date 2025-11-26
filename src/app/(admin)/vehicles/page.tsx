@@ -6,6 +6,7 @@ import VehicleCreateModal from '@/components/modals/VehicleCreateModal';
 import VehicleViewModal from '@/components/modals/VehicleViewModal';
 import VehicleEditModal from '@/components/modals/VehicleEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import { formatDateToIST } from '@/utils/dateFormatter';
 import type { Vehicle } from '@/store/api/types';
 
 export default function VehiclesPage() {
@@ -154,14 +155,6 @@ export default function VehiclesPage() {
     }
   };
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'long' });
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
@@ -364,37 +357,37 @@ export default function VehiclesPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.registrationDate ? formatDate(vehicle.registrationDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.registrationDate ? formatDateToIST(vehicle.registrationDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.fitnessDate ? formatDate(vehicle.fitnessDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.fitnessDate ? formatDateToIST(vehicle.fitnessDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.insuranceDate ? formatDate(vehicle.insuranceDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.insuranceDate ? formatDateToIST(vehicle.insuranceDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.taxDueDate ? formatDate(vehicle.taxDueDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.taxDueDate ? formatDateToIST(vehicle.taxDueDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.permitDate ? formatDate(vehicle.permitDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.permitDate ? formatDateToIST(vehicle.permitDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.puccDate ? formatDate(vehicle.puccDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.puccDate ? formatDateToIST(vehicle.puccDate) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {vehicle.npValidUpto ? formatDate(vehicle.npValidUpto) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
+                            {vehicle.npValidUpto ? formatDateToIST(vehicle.npValidUpto) : <span className="text-gray-500 dark:text-gray-400">N/A</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

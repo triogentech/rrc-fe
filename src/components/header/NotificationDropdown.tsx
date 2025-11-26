@@ -1,13 +1,26 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useReduxAuth } from "@/store/hooks/useReduxAuth";
+import { api } from "@/store/api/baseApi";
+import { formatDateToIST } from "@/utils/dateFormatter";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 
+interface VehicleReminder {
+  vehicleNumber: string;
+  model: string;
+  type: 'insurance' | 'permit' | 'pucc' | 'np';
+  date: string;
+  daysRemaining: number;
+}
+
 export default function NotificationDropdown() {
+  const { isAuthenticated } = useReduxAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifying, setNotifying] = useState(true);
+  const [notifying, setNotifying] = useState(false);
+  const [vehicleReminders, setVehicleReminders] = useState<VehicleReminder[]>([]);
+  const [isLoadingReminders, setIsLoadingReminders] = useState(false);
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -20,6 +33,152 @@ export default function NotificationDropdown() {
   const handleClick = () => {
     toggleDropdown();
     setNotifying(false);
+  };
+
+  // Fetch vehicle reminders only when user is authenticated
+  useEffect(() => {
+    // Only fetch if user is authenticated
+    if (!isAuthenticated) {
+      setVehicleReminders([]);
+      setNotifying(false);
+      return;
+    }
+
+    const fetchVehicleReminders = async () => {
+      setIsLoadingReminders(true);
+      try {
+        const response = await api.get('/api/vehicles', {
+          fields: 'insuranceDate,permitDate,puccDate,npValidUpto,vehicleNumber,model',
+          'pagination[pageSize]': 1000, // Get all vehicles
+        });
+
+        // Handle Strapi response format
+        let vehicles: Record<string, unknown>[] = [];
+        if (response.data) {
+          if (Array.isArray(response.data)) {
+            vehicles = response.data as Record<string, unknown>[];
+          } else if (typeof response.data === 'object' && 'data' in response.data) {
+            const strapiResponse = response.data as { data?: unknown[] };
+            vehicles = (strapiResponse.data || []) as Record<string, unknown>[];
+          }
+        }
+
+        const reminders: VehicleReminder[] = [];
+        const today = new Date();
+        const oneWeekFromNow = new Date(today);
+        oneWeekFromNow.setDate(today.getDate() + 7);
+
+        vehicles.forEach((vehicle: Record<string, unknown>) => {
+          const vehicleNumber = String(vehicle.vehicleNumber || '');
+          const model = String(vehicle.model || '');
+
+          // Check insuranceDate
+          if (vehicle.insuranceDate) {
+            const insuranceDate = new Date(String(vehicle.insuranceDate));
+            if (!isNaN(insuranceDate.getTime()) && insuranceDate <= oneWeekFromNow && insuranceDate >= today) {
+              const daysRemaining = Math.ceil((insuranceDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              reminders.push({
+                vehicleNumber,
+                model,
+                type: 'insurance',
+                date: String(vehicle.insuranceDate),
+                daysRemaining,
+              });
+            }
+          }
+
+          // Check permitDate
+          if (vehicle.permitDate) {
+            const permitDate = new Date(String(vehicle.permitDate));
+            if (!isNaN(permitDate.getTime()) && permitDate <= oneWeekFromNow && permitDate >= today) {
+              const daysRemaining = Math.ceil((permitDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              reminders.push({
+                vehicleNumber,
+                model,
+                type: 'permit',
+                date: String(vehicle.permitDate),
+                daysRemaining,
+              });
+            }
+          }
+
+          // Check puccDate
+          if (vehicle.puccDate) {
+            const puccDate = new Date(String(vehicle.puccDate));
+            if (!isNaN(puccDate.getTime()) && puccDate <= oneWeekFromNow && puccDate >= today) {
+              const daysRemaining = Math.ceil((puccDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              reminders.push({
+                vehicleNumber,
+                model,
+                type: 'pucc',
+                date: String(vehicle.puccDate),
+                daysRemaining,
+              });
+            }
+          }
+
+          // Check npValidUpto
+          if (vehicle.npValidUpto) {
+            const npValidUpto = new Date(String(vehicle.npValidUpto));
+            if (!isNaN(npValidUpto.getTime()) && npValidUpto <= oneWeekFromNow && npValidUpto >= today) {
+              const daysRemaining = Math.ceil((npValidUpto.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              reminders.push({
+                vehicleNumber,
+                model,
+                type: 'np',
+                date: String(vehicle.npValidUpto),
+                daysRemaining,
+              });
+            }
+          }
+        });
+
+        // Sort by days remaining (ascending - most urgent first)
+        reminders.sort((a, b) => a.daysRemaining - b.daysRemaining);
+        setVehicleReminders(reminders);
+        
+        // Show notification badge if there are reminders
+        if (reminders.length > 0) {
+          setNotifying(true);
+        }
+      } catch (error) {
+        console.error('Error fetching vehicle reminders:', error);
+      } finally {
+        setIsLoadingReminders(false);
+      }
+    };
+
+    fetchVehicleReminders();
+  }, [isAuthenticated]);
+
+  const getReminderTypeLabel = (type: VehicleReminder['type']): string => {
+    switch (type) {
+      case 'insurance':
+        return 'Insurance';
+      case 'permit':
+        return 'Permit';
+      case 'pucc':
+        return 'PUCC';
+      case 'np':
+        return 'NP Valid';
+      default:
+        return 'Document';
+    }
+  };
+
+  const getReminderTypeColor = (type: VehicleReminder['type']): string => {
+    switch (type) {
+      case 'insurance':
+        return 'bg-blue-500';
+      case 'permit':
+        return 'bg-yellow-500';
+      case 'pucc':
+        return 'bg-green-500';
+      case 'np':
+        return 'bg-purple-500';
+      default:
+        return 'bg-gray-500';
+    }
   };
   return (
     <div className="relative">
@@ -79,298 +238,66 @@ export default function NotificationDropdown() {
           </button>
         </div>
         <ul className="flex flex-col h-auto overflow-y-auto custom-scrollbar">
-          {/* Example notification items */}
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-02.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Terry Franci
+          {/* Vehicle Reminders */}
+          {isLoadingReminders ? (
+            <li className="p-4 text-center text-gray-500 dark:text-gray-400">
+              Loading reminders...
+            </li>
+          ) : vehicleReminders.length > 0 ? (
+            vehicleReminders.map((reminder, index) => (
+              <li key={`${reminder.vehicleNumber}-${reminder.type}-${index}`}>
+                <DropdownItem
+                  onItemClick={closeDropdown}
+                  className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
+                >
+                  <span className="relative flex w-full h-10 rounded-full z-1 max-w-10 items-center justify-center">
+                    <span className={`w-10 h-10 rounded-full ${getReminderTypeColor(reminder.type)} flex items-center justify-center`}>
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                    </span>
+                    <span className={`absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white ${getReminderTypeColor(reminder.type)} dark:border-gray-900`}></span>
                   </span>
-                  <span>requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
+
+                  <span className="block">
+                    <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium text-gray-800 dark:text-white/90">
+                        {reminder.vehicleNumber}
+                      </span>
+                      <span>- {reminder.model}</span>
+                      <span className="font-medium text-gray-800 dark:text-white/90">
+                        {getReminderTypeLabel(reminder.type)}
+                      </span>
+                      <span>expires in</span>
+                      <span className="font-medium text-red-600 dark:text-red-400">
+                        {reminder.daysRemaining} day{reminder.daysRemaining !== 1 ? 's' : ''}
+                      </span>
+                    </span>
+
+                    <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
+                      <span>Vehicle</span>
+                      <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                      <span>Expires: {formatDateToIST(reminder.date)}</span>
+                    </span>
                   </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>5 min ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-03.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 block space-x-1  text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Alena Franci
-                  </span>
-                  <span> requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>8 min ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-              href="#"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-04.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 block space-x-1 text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Jocelyn Kenter
-                  </span>
-                  <span>requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>15 min ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-              href="#"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-05.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-error-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Brandon Philips
-                  </span>
-                  <span> requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>1 hr ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-              onItemClick={closeDropdown}
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-02.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Terry Franci
-                  </span>
-                  <span>requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>5 min ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-03.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Alena Franci
-                  </span>
-                  <span>requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>8 min ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-04.jpg"
-                  alt="User"
-                  className="w-full overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Jocelyn Kenter
-                  </span>
-                  <span>requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>15 min ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-              href="#"
-            >
-              <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                <Image
-                  width={40}
-                  height={40}
-                  src="/images/user/user-05.jpg"
-                  alt="User"
-                  className="overflow-hidden rounded-full"
-                />
-                <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-error-500 dark:border-gray-900"></span>
-              </span>
-
-              <span className="block">
-                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Brandon Philips
-                  </span>
-                  <span>requests permission to change</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">
-                    Project - Nganter App
-                  </span>
-                </span>
-
-                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                  <span>Project</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>1 hr ago</span>
-                </span>
-              </span>
-            </DropdownItem>
-          </li>
-          {/* Add more items as needed */}
+                </DropdownItem>
+              </li>
+            ))
+          ) : vehicleReminders.length === 0 && !isLoadingReminders ? (
+            <li className="p-4 text-center text-gray-500 dark:text-gray-400">
+              No notifications
+            </li>
+          ) : null}
         </ul>
         <Link
           href="/"

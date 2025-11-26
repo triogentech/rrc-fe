@@ -14,6 +14,7 @@ import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 import { EyeIcon, PencilIcon, TrashBinIcon } from '@/icons';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
 
 const TripsPage = () => {
   const searchParams = useSearchParams();
@@ -26,7 +27,6 @@ const TripsPage = () => {
     updateTrip,
     deleteTrip,
     getTripStatusColor,
-    formatTripDate,
     clearTripsError,
   } = useTrips();
 
@@ -595,13 +595,13 @@ const TripsPage = () => {
                   {/* 6. Start Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {formatTripDate(trip.estimatedStartTime)}
+                      {formatDateTimeToIST(trip.estimatedStartTime)}
                     </div>
                   </td>
                   {/* 7. End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {formatTripDate(trip.estimatedEndTime)}
+                      {formatDateTimeToIST(trip.estimatedEndTime)}
                     </div>
                   </td>
                   {/* 8. Freight Amount */}
@@ -631,7 +631,7 @@ const TripsPage = () => {
                   {/* 12. Actual End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.actualEndTime ? formatTripDate(trip.actualEndTime) : 'N/A'}
+                      {formatDateTimeToIST(trip.actualEndTime)}
                     </div>
                   </td>
                   {/* 13. Running TAT in Hours */}

@@ -1216,20 +1216,17 @@ export const transactionService = {
       ...otherParams
     };
 
-    // Add pagination parameters in the correct Strapi format
-    if (page || limit) {
-      queryParams.pagination = {
-        ...(page && { page }),
-        ...(limit && { pageSize: limit })
-      };
+    // Add pagination parameters using bracket notation for Strapi
+    if (page) {
+      queryParams['pagination[page]'] = page;
+    }
+    if (limit) {
+      queryParams['pagination[pageSize]'] = limit;
     }
 
-    // Add filters
-    if (search) {
-      queryParams['filters[$or]'] = [
-        { transactionId: { $containsi: search } },
-        { description: { $containsi: search } }
-      ];
+    // Add filters - search only by description
+    if (search && search.trim()) {
+      queryParams['filters[description][$containsi]'] = search.trim();
     }
     if (status) {
       queryParams['filters[transactionStatus][$eq]'] = status;

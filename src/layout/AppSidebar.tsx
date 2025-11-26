@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
+import { FaTruck, FaCity } from "react-icons/fa";
 import {
   ChevronDownIcon,
   GridIcon,
@@ -14,7 +15,6 @@ import {
   BoxIcon,
   DollarLineIcon,
   UserIcon,
-  FolderIcon,
   ListIcon,
 } from "../icons/index";
 
@@ -64,12 +64,12 @@ const navItems: NavItem[] = [
     path: "/staff",
   },
   {
-    icon: <FolderIcon />,
+    icon: <FaCity />,
     name: "City",
     path: "/city",
   },
   {
-    icon: <BoxIcon />,
+    icon: <FaTruck />,
     name: "Trucks",
     path: "/trucks/garage",
     subItems: [

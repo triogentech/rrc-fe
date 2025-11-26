@@ -9,6 +9,7 @@ import DriverTripsModal from '@/components/modals/DriverTripsModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Driver } from '@/store/api/types';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
+import { formatDateTimeToIST } from '@/utils/dateFormatter';
 
 export default function DriversPage() {
   const {
@@ -140,13 +141,6 @@ export default function DriversPage() {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
@@ -347,7 +341,7 @@ export default function DriversPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(driver.createdAt)}
+                            {formatDateTimeToIST(driver.createdAt)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
