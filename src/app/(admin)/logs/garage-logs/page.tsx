@@ -6,6 +6,7 @@ import { showErrorToast, showSuccessToast } from '@/utils/toastHelper';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 import { formatDateTimeToIST } from '@/utils/dateFormatter';
 import GarageLogCreateModal from '@/components/modals/GarageLogCreateModal';
+import GarageLogEditModal from '@/components/modals/GarageLogEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 
 export default function GarageLogsPage() {
@@ -14,6 +15,7 @@ export default function GarageLogsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<GarageLog & Record<string, unknown> | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -100,6 +102,20 @@ export default function GarageLogsPage() {
     fetchLogs({ page: pagination?.page || 1, search: searchQuery || undefined });
   };
 
+  const handleLogUpdated = () => {
+    fetchLogs({ page: pagination?.page || 1, search: searchQuery || undefined });
+  };
+
+  const handleEditLog = (log: GarageLog & Record<string, unknown>) => {
+    setSelectedLog(log);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedLog(null);
+  };
+
   const handleDeleteLog = (log: GarageLog & Record<string, unknown>) => {
     setSelectedLog(log);
     setIsDeleteModalOpen(true);
@@ -123,79 +139,108 @@ export default function GarageLogsPage() {
     }
   };
 
-  const formatCellValue = (key: string, value: unknown): string | React.ReactNode => {
-    if (value === null || value === undefined) return 'N/A';
+  // Helper function to get garage name from garage relation
+  const getGarageName = (garage: unknown): string => {
+    if (!garage) return 'N/A';
+    if (typeof garage === 'string') return 'N/A'; // If it's just an ID, we can't show name
+    if (typeof garage === 'object') {
+      const garageObj = garage as Record<string, unknown>;
+      return String(garageObj.name || 'N/A');
+    }
+    return 'N/A';
+  };
+
+  // Helper function to get invoice date
+  const getInvoiceDate = (log: Record<string, unknown>): string => {
+    const invoiceDate = log.invoiceDate;
+    if (!invoiceDate) return 'N/A';
+    return formatDateTimeToIST(String(invoiceDate));
+  };
+
+  // Helper function to get invoice raised amount
+  const getInvoiceRaisedAmount = (log: Record<string, unknown>): string => {
+    const amount = log.invoiceRaisedAmount;
+    if (amount === null || amount === undefined) return 'N/A';
+    const numAmount = typeof amount === 'number' ? amount : parseFloat(String(amount));
+    if (isNaN(numAmount)) return 'N/A';
+    return `₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Helper function to get invoice passed amount
+  const getInvoicePassedAmount = (log: Record<string, unknown>): string => {
+    const amount = log.invoicePassedAmount;
+    if (amount === null || amount === undefined) return 'N/A';
+    const numAmount = typeof amount === 'number' ? amount : parseFloat(String(amount));
+    if (isNaN(numAmount)) return 'N/A';
+    return `₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Helper function to get invoice doc (file URL or name)
+  const getInvoiceDoc = (log: Record<string, unknown>): React.ReactNode => {
+    const invoiceDoc = log.invoiceDoc;
+    if (!invoiceDoc) return 'N/A';
     
-    // Handle user-related fields
-    if (key === 'cstmCreatedBy' || key === 'cstmUpdatedBy' || key === 'lastUpdatedBy') {
-      const displayName = getUserDisplayName(value as string | User | User[] | undefined);
-      const email = getUserEmail(value as string | User | User[] | undefined);
-      if (email) {
+    // If it's a string (URL or file path)
+    if (typeof invoiceDoc === 'string') {
+      if (invoiceDoc.startsWith('http') || invoiceDoc.startsWith('/')) {
         return (
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{displayName}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{email}</span>
-          </div>
+          <a
+            href={invoiceDoc}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+          >
+            View Document
+          </a>
         );
       }
-      return displayName;
+      return invoiceDoc;
     }
     
-    // Handle date fields
-    if (key.includes('At') || key.includes('Date') || key.includes('Time')) {
-      return formatDateTimeToIST(String(value));
+    // If it's an object (Strapi file object)
+    if (typeof invoiceDoc === 'object') {
+      const docObj = invoiceDoc as Record<string, unknown>;
+      const formats = docObj.formats as Record<string, unknown> | undefined;
+      const thumbnail = formats?.thumbnail as Record<string, unknown> | undefined;
+      const url = docObj.url || thumbnail?.url;
+      const name = docObj.name || docObj.filename;
+      
+      if (url) {
+        return (
+          <a
+            href={String(url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+          >
+            {name ? String(name) : 'View Document'}
+          </a>
+        );
+      }
+      return name ? String(name) : 'N/A';
     }
     
-    // Handle boolean values
-    if (typeof value === 'boolean') {
-      return value ? 'Yes' : 'No';
-    }
-    
-    // Handle arrays
-    if (Array.isArray(value)) {
-      return value.length > 0 ? `${value.length} item${value.length !== 1 ? 's' : ''}` : 'None';
-    }
-    
-    // Handle objects (but not user objects)
-    if (typeof value === 'object') {
-      // Try to extract meaningful fields
-      const obj = value as Record<string, unknown>;
-      if (obj.name) return String(obj.name);
-      if (obj.title) return String(obj.title);
-      if (obj.id) return String(obj.id);
-      // If it's a complex object, show a summary
-      return `Object (${Object.keys(obj).length} fields)`;
-    }
-    
-    return String(value);
+    return 'N/A';
   };
 
-  // Get all keys from log objects to display in table, excluding internal fields
-  const getLogKeys = (logs: GarageLog[]): string[] => {
-    if (logs.length === 0) return [];
-    const allKeys = new Set<string>();
-    logs.forEach(log => {
-      Object.keys(log).forEach(key => {
-        // Exclude internal/system fields
-        if (!['id', 'documentId', '__v', '__typename'].includes(key)) {
-          allKeys.add(key);
-        }
-      });
-    });
-    // Sort keys, putting common fields first
-    const commonFields = ['brand', 'createdAt', 'updatedAt', 'publishedAt', 'cstmCreatedBy', 'cstmUpdatedBy', 'lastUpdatedBy'];
-    const sortedKeys = Array.from(allKeys).sort((a, b) => {
-      const aIndex = commonFields.indexOf(a.toLowerCase());
-      const bIndex = commonFields.indexOf(b.toLowerCase());
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
-      return a.localeCompare(b);
-    });
-    return sortedKeys;
+  // Helper function to get updated by (cstmUpdatedBy or lastUpdatedBy)
+  const getUpdatedBy = (log: Record<string, unknown>): string | React.ReactNode => {
+    const updatedBy = log.cstmUpdatedBy || log.lastUpdatedBy;
+    if (!updatedBy) return 'N/A';
+    
+    const displayName = getUserDisplayName(updatedBy as string | User | User[] | undefined);
+    const email = getUserEmail(updatedBy as string | User | User[] | undefined);
+    
+    if (email) {
+      return (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{displayName}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{email}</span>
+        </div>
+      );
+    }
+    return displayName;
   };
-
-  const logKeys = getLogKeys(logs);
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
@@ -302,13 +347,29 @@ export default function GarageLogsPage() {
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        ID
+                        Garage Name
                       </th>
-                      {logKeys.slice(0, 10).map((key) => (
-                        <th key={key} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                        </th>
-                      ))}
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Invoice Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Invoice Raised Amount
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Invoice Passed Amount
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Invoice Doc
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created At
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created By
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Updated By
+                      </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Actions
                       </th>
@@ -317,27 +378,99 @@ export default function GarageLogsPage() {
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {logs.map((log: GarageLog & Record<string, unknown>) => {
                       const logData = log as Record<string, unknown>;
+                      const garage = logData.garage;
+                      const cstmCreatedBy = logData.cstmCreatedBy;
+                      
                       return (
-                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <tr key={log.id || log.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          {/* Garage Name */}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-white">
-                              {log.documentId || log.id}
+                            <div className="text-sm text-gray-900 dark:text-white font-medium">
+                              {getGarageName(garage)}
                             </div>
                           </td>
-                          {logKeys.slice(0, 10).map((key) => (
-                            <td key={key} className="px-6 py-4">
-                              <div className="text-sm text-gray-900 dark:text-white">
-                                {formatCellValue(key, logData[key])}
-                              </div>
-                            </td>
-                          ))}
+                          
+                          {/* Invoice Date */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 dark:text-white">
+                              {getInvoiceDate(logData)}
+                            </div>
+                          </td>
+                          
+                          {/* Invoice Raised Amount */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {getInvoiceRaisedAmount(logData)}
+                            </div>
+                          </td>
+                          
+                          {/* Invoice Passed Amount */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {getInvoicePassedAmount(logData)}
+                            </div>
+                          </td>
+                          
+                          {/* Invoice Doc */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 dark:text-white">
+                              {getInvoiceDoc(logData)}
+                            </div>
+                          </td>
+                          
+                          {/* Created At */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {logData.createdAt ? formatDateTimeToIST(String(logData.createdAt)) : 'N/A'}
+                            </div>
+                          </td>
+                          
+                          {/* Created By */}
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 dark:text-white">
+                              {cstmCreatedBy ? (
+                                (() => {
+                                  const displayName = getUserDisplayName(cstmCreatedBy as string | User | User[] | undefined);
+                                  const email = getUserEmail(cstmCreatedBy as string | User | User[] | undefined);
+                                  if (email) {
+                                    return (
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{displayName}</span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">{email}</span>
+                                      </div>
+                                    );
+                                  }
+                                  return displayName;
+                                })()
+                              ) : (
+                                'N/A'
+                              )}
+                            </div>
+                          </td>
+                          
+                          {/* Updated By */}
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 dark:text-white">
+                              {getUpdatedBy(logData)}
+                            </div>
+                          </td>
+                          
+                          {/* Actions */}
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleDeleteLog(log)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              Delete
-                            </button>
+                            <div className="flex items-center justify-end gap-3">
+                              <button
+                                onClick={() => handleEditLog(log)}
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLog(log)}
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -378,6 +511,13 @@ export default function GarageLogsPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleLogCreated}
+      />
+
+      <GarageLogEditModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        garageLog={selectedLog}
+        onSuccess={handleLogUpdated}
       />
 
       <ConfirmationModal

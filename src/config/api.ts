@@ -26,10 +26,17 @@ export const getDevApiBaseUrl = (): string => {
 };
 
 // Current API configuration
+// Note: Some Strapi operations (especially create/update with relations)
+// can legitimately take longer than 10s on production infrastructure.
+// Increase the default timeout to reduce false "Request timeout" errors
+// where the backend actually succeeds but the frontend aborts first.
 export const API_CONFIG = {
   baseURL: getApiBaseUrl(),
   devBaseURL: getDevApiBaseUrl(),
-  timeout: 10000,
+  // Global request timeout in milliseconds
+  // Was: 10_000 (10s) – too aggressive for some write operations.
+  // Now: 60_000 (60s) to give Strapi enough time under load.
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

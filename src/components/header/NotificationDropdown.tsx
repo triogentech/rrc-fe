@@ -242,14 +242,14 @@ export default function NotificationDropdown() {
           {isLoadingReminders ? (
             <li className="p-4 text-center text-gray-500 dark:text-gray-400">
               Loading reminders...
-            </li>
+          </li>
           ) : vehicleReminders.length > 0 ? (
             vehicleReminders.map((reminder, index) => (
               <li key={`${reminder.vehicleNumber}-${reminder.type}-${index}`}>
-                <DropdownItem
-                  onItemClick={closeDropdown}
-                  className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
-                >
+            <DropdownItem
+              onItemClick={closeDropdown}
+              className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
+            >
                   <span className="relative flex w-full h-10 rounded-full z-1 max-w-10 items-center justify-center">
                     <span className={`w-10 h-10 rounded-full ${getReminderTypeColor(reminder.type)} flex items-center justify-center`}>
                       <svg
@@ -265,38 +265,38 @@ export default function NotificationDropdown() {
                           d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                         />
                       </svg>
-                    </span>
+              </span>
                     <span className={`absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white ${getReminderTypeColor(reminder.type)} dark:border-gray-900`}></span>
-                  </span>
+              </span>
 
-                  <span className="block">
-                    <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                      <span className="font-medium text-gray-800 dark:text-white/90">
+              <span className="block">
+                <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
+                  <span className="font-medium text-gray-800 dark:text-white/90">
                         {reminder.vehicleNumber}
-                      </span>
+                  </span>
                       <span>- {reminder.model}</span>
-                      <span className="font-medium text-gray-800 dark:text-white/90">
+                  <span className="font-medium text-gray-800 dark:text-white/90">
                         {getReminderTypeLabel(reminder.type)}
-                      </span>
+                  </span>
                       <span>expires in</span>
                       <span className="font-medium text-red-600 dark:text-red-400">
                         {reminder.daysRemaining} day{reminder.daysRemaining !== 1 ? 's' : ''}
-                      </span>
-                    </span>
-
-                    <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                      <span>Vehicle</span>
-                      <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                      <span>Expires: {formatDateToIST(reminder.date)}</span>
-                    </span>
                   </span>
-                </DropdownItem>
-              </li>
+                </span>
+
+                <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
+                      <span>Vehicle</span>
+                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                      <span>Expires: {formatDateToIST(reminder.date)}</span>
+                </span>
+              </span>
+            </DropdownItem>
+          </li>
             ))
           ) : vehicleReminders.length === 0 && !isLoadingReminders ? (
             <li className="p-4 text-center text-gray-500 dark:text-gray-400">
               No notifications
-            </li>
+          </li>
           ) : null}
         </ul>
         <Link

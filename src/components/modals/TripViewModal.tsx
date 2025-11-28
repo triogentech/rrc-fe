@@ -122,17 +122,17 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
               {/* Basic Information */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Basic Information</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Trip Number</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Trip Number</p>
                     <p className="text-gray-900 dark:text-white font-medium">{trip.tripNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTripStatusColor(trip.currentStatus)}`}>
-                      {getTripStatusDisplayName(trip.currentStatus)}
-                    </span>
-                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTripStatusColor(trip.currentStatus)}`}>
+                    {getTripStatusDisplayName(trip.currentStatus)}
+                  </span>
+                </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Start Point</p>
                     <p className="text-gray-900 dark:text-white">{trip.startPoint || 'N/A'}</p>
@@ -152,12 +152,12 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Time Information</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Estimated Start Time</p>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Estimated Start Time</p>
                     <p className="text-gray-900 dark:text-white">{formatDateTimeToIST(trip.estimatedStartTime)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Estimated End Time</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Estimated End Time</p>
                     <p className="text-gray-900 dark:text-white">{formatDateTimeToIST(trip.estimatedEndTime)}</p>
                   </div>
                   {trip.actualEndTime && (
@@ -173,11 +173,11 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Running TAT</p>
                     <p className="text-gray-900 dark:text-white">{getRunningTAT(trip)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</p>
-                    <p className="text-gray-900 dark:text-white">{getTripDuration(trip)}</p>
-                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</p>
+                  <p className="text-gray-900 dark:text-white">{getTripDuration(trip)}</p>
+                </div>
                 </div>
               </div>
 
@@ -274,7 +274,7 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Created By</p>
                     {trip.cstmCreatedBy ? (
-                      <div>
+                <div>
                         <p className="text-gray-900 dark:text-white font-medium">
                           {getUserDisplayName(trip.cstmCreatedBy)}
                         </p>
@@ -287,11 +287,11 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
                     ) : (
                       <p className="text-gray-500 dark:text-gray-400">N/A</p>
                     )}
-                  </div>
+                </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Updated By</p>
                     {trip.cstmUpdatedBy ? (
-                      <div>
+                  <div>
                         <p className="text-gray-900 dark:text-white font-medium">
                           {getUserDisplayName(trip.cstmUpdatedBy)}
                         </p>
@@ -300,7 +300,7 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
                             {getUserEmail(trip.cstmUpdatedBy)}
                           </p>
                         )}
-                      </div>
+                  </div>
                     ) : (
                       <p className="text-gray-500 dark:text-gray-400">N/A</p>
                     )}
@@ -313,18 +313,18 @@ export default function TripViewModal({ isOpen, onClose, trip }: TripViewModalPr
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</p>
                     <p className="text-gray-900 dark:text-white">{formatDateTimeToIST(trip.updatedAt)}</p>
                   </div>
-                  {trip.startPointCoords && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Start Point Coordinates</p>
+                {trip.startPointCoords && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Start Point Coordinates</p>
                       <p className="text-gray-900 dark:text-white text-xs break-all">{trip.startPointCoords}</p>
-                    </div>
-                  )}
-                  {trip.endPointCoords && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">End Point Coordinates</p>
+                  </div>
+                )}
+                {trip.endPointCoords && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">End Point Coordinates</p>
                       <p className="text-gray-900 dark:text-white text-xs break-all">{trip.endPointCoords}</p>
-                    </div>
-                  )}
+                  </div>
+                )}
                 </div>
               </div>
             </div>

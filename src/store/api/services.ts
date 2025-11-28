@@ -710,6 +710,45 @@ export const tripService = {
   },
 
   /**
+   * Get trips ending today
+   * Uses today's date to filter trips whose estimatedEndTime falls within today
+   * Uses populate[vehicle][fields]=vehicleNumber as specified
+   */
+  getTripsEndingToday: (params?: PaginationParams) => {
+    const { page, limit, ...otherParams } = params || {};
+    
+    // Get today's start and end in ISO format for proper datetime filtering
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfDay = today.toISOString();
+
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+    const endOfDayISO = endOfDay.toISOString();
+    
+    const queryParams: Record<string, unknown> = {
+      // Filter trips where estimatedEndTime is within today's date range
+      'filters[estimatedEndTime][$gte]': startOfDay,
+      'filters[estimatedEndTime][$lte]': endOfDayISO,
+      // Populate vehicle with only vehicleNumber field as user specified
+      'populate[vehicle][fields]': 'vehicleNumber',
+      ...otherParams
+    };
+
+    // Add pagination parameters in the correct Strapi format
+    if (page || limit) {
+      queryParams.pagination = {
+        ...(page && { page }),
+        ...(limit && { pageSize: limit })
+      };
+    }
+
+    console.log('Trip service: Getting trips ending today with params:', params);
+    console.log('Trip service: Query params:', queryParams);
+    return api.get<StrapiResponse<Trip>>('/api/trips', queryParams);
+  },
+
+  /**
    * Get single trip
    */
   getTrip: (id: string) => api.get<Trip>(`/api/trips/${id}`),

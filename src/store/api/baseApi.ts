@@ -189,12 +189,28 @@ export class BaseApi {
     const timeoutId = setTimeout(() => controller.abort(), config.timeout || this.timeout);
 
     try {
+      // Prepare headers - don't set Content-Type for FormData, let browser set it with boundary
+      const headers = this.prepareHeaders(config.headers);
+      const isFormData = config.data instanceof FormData;
+      
+      // Remove Content-Type header for FormData to let browser set it with boundary
+      if (isFormData && headers['Content-Type']) {
+        delete headers['Content-Type'];
+      }
+
+      // Prepare request body with correct typing for fetch
+      const body: BodyInit | undefined = config.data
+        ? (isFormData
+            ? (config.data as FormData)
+            : (JSON.stringify(config.data) as BodyInit))
+        : undefined;
+
       const response = await fetch(
         this.buildURL(config.url, config.params),
         {
           method: config.method,
-          headers: this.prepareHeaders(config.headers),
-          body: config.data ? JSON.stringify(config.data) : undefined,
+          headers,
+          body,
           signal: controller.signal,
         }
       );

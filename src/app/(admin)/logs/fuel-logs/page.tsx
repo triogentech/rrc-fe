@@ -364,12 +364,12 @@ export default function FuelLogsPage() {
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => handleDeleteLog(log)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              Delete
-                            </button>
+                          <button
+                            onClick={() => handleDeleteLog(log)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            Delete
+                          </button>
                           </div>
                         </td>
                       </tr>
