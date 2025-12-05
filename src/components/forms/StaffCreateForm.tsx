@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStaff } from '@/store/hooks/useStaff';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { StaffCreateRequest, Staff } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
+import { EyeIcon, EyeCloseIcon } from '@/icons';
 
 interface StaffCreateFormProps {
   onSuccess: (staff: Staff) => void;
@@ -34,6 +35,18 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
   });
 
   const [errors, setErrors] = useState<Partial<StaffCreateRequest>>({});
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Auto-fill username with contact number when moving to step 2
+  useEffect(() => {
+    if (currentStep === 2 && formData.contactNumber) {
+      // Always sync username with contact number in step 2
+      setFormData(prev => ({
+        ...prev,
+        username: formData.contactNumber
+      }));
+    }
+  }, [currentStep, formData.contactNumber]);
 
   const handleInputChange = (field: keyof StaffCreateRequest, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -215,11 +228,14 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
               onChange={(e) => handleInputChange('username', e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
                 errors.username ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-              }`}
+              } ${formData.contactNumber ? 'bg-gray-50 dark:bg-gray-600 cursor-not-allowed' : ''}`}
               placeholder="Enter username"
-              disabled={isLoading}
+              disabled={isLoading || !!formData.contactNumber}
+              readOnly={!!formData.contactNumber}
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">min. 3 characters</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {formData.contactNumber ? 'Auto-filled from contact number' : 'min. 3 characters'}
+            </p>
             {errors.username && (
               <p className="mt-1 text-sm text-red-500">{errors.username}</p>
             )}
@@ -255,7 +271,7 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
             </label>
             <div className="relative">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white pr-10 ${
@@ -264,12 +280,18 @@ export default function StaffCreateForm({ onSuccess, onCancel, currentStep, onSt
                 placeholder="Enter password"
                 disabled={isLoading}
               />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeCloseIcon className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
             </div>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">min. 6 characters</p>
             {errors.password && (

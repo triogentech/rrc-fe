@@ -8,6 +8,7 @@ import { loadProviderService } from '@/store/api/services';
 import type { TripCreateRequest, Trip, Vehicle, Driver } from '@/store/api/types';
 import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
+import { convertDatetimeLocalToUTC, formatDateToDatetimeLocal } from '@/utils/dateFormatter';
 
 interface LoadProvider {
   id: number;
@@ -63,9 +64,12 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
       const startTime = new Date(formData.estimatedStartTime);
       const endTime = new Date(startTime.getTime() + (totalTripTimeInHours * 60 * 60 * 1000));
       
+      // Format date in local time for datetime-local input using utility function
+      const formattedEndTime = formatDateToDatetimeLocal(endTime);
+      
       setFormData(prev => ({
         ...prev,
-        estimatedEndTime: endTime.toISOString().slice(0, 16), // Format for datetime-local input
+        estimatedEndTime: formattedEndTime,
         totalTripTimeInMinutes: totalTripTimeInHours * 60
       }));
     }
@@ -578,6 +582,10 @@ export default function TripCreateForm({ onSuccess, onCancel }: TripCreateFormPr
     try {
       // Prepare the data for submission
       const submitData: TripCreateRequest & { loadProvider?: string } = { ...formData };
+      
+      // Convert datetime-local values to ISO UTC format for API using utility function
+      submitData.estimatedStartTime = convertDatetimeLocalToUTC(submitData.estimatedStartTime);
+      submitData.estimatedEndTime = convertDatetimeLocalToUTC(submitData.estimatedEndTime);
       
       // Clean up touching locations: trim names and filter out empty ones
       if (submitData.isTouchingLocationAvailable && submitData.touchingLocations) {

@@ -5,6 +5,7 @@ import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import { useAadhaarValidation } from '@/hooks/useAadhaarValidation';
 import type { DriverCreateRequest, Driver } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
+import { EyeIcon, EyeCloseIcon } from '@/icons';
 
 interface DriverCreateFormProps {
   onSuccess?: (driver: Driver) => void;
@@ -48,6 +49,18 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
   });
 
   const [errors, setErrors] = useState<Partial<DriverCreateRequest>>({});
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Auto-fill username with contact number when moving to step 2
+  useEffect(() => {
+    if (currentStep === 2 && formData.contactNumber) {
+      // Always sync username with contact number in step 2
+      setFormData(prev => ({
+        ...prev,
+        username: formData.contactNumber
+      }));
+    }
+  }, [currentStep, formData.contactNumber]);
 
   // Aadhaar validation hook
   const { 
@@ -143,15 +156,29 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
         newErrors.password = 'Password must be at least 6 characters';
       }
     } else if (step === 3) {
-      // Banking Details validation
-      if (formData.drivingLicenceNumber && !/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(formData.drivingLicenceNumber)) {
-        newErrors.drivingLicenceNumber = 'Driving license number must be in valid format (e.g., DL01234567890123)';
+      // Banking Details validation - All fields are mandatory
+      if (!formData.accountHolderName?.trim()) {
+        newErrors.accountHolderName = 'Account holder name is required';
       }
-      if (formData.accountNumber && !/^\d{9,18}$/.test(formData.accountNumber)) {
+      if (!formData.accountNumber?.trim()) {
+        newErrors.accountNumber = 'Account number is required';
+      } else if (!/^\d{9,18}$/.test(formData.accountNumber)) {
         newErrors.accountNumber = 'Account number must be 9-18 digits';
       }
-      if (formData.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
+      if (!formData.branchName?.trim()) {
+        newErrors.branchName = 'Branch name is required';
+      }
+      if (!formData.ifscCode?.trim()) {
+        newErrors.ifscCode = 'IFSC code is required';
+      } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
         newErrors.ifscCode = 'IFSC code must be in valid format (e.g., SBIN0001234)';
+      }
+      if (!formData.accountType?.trim()) {
+        newErrors.accountType = 'Account type is required';
+      }
+      // Driving license validation (optional but must be valid if provided)
+      if (formData.drivingLicenceNumber && !/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(formData.drivingLicenceNumber)) {
+        newErrors.drivingLicenceNumber = 'Driving license number must be in valid format (e.g., DL01234567890123)';
       }
     }
 
@@ -198,15 +225,16 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
         // Custom fields
         cstmCreatedBy: formData.cstmCreatedBy,
         cstmUpdatedBy: formData.cstmUpdatedBy,
+        // Banking fields (mandatory)
+        accountHolderName: (formData.accountHolderName || '').trim(),
+        accountNumber: (formData.accountNumber || '').trim(),
+        branchName: (formData.branchName || '').trim(),
+        ifscCode: (formData.ifscCode || '').trim(),
+        accountType: (formData.accountType || '').trim(),
         // Only include optional fields if they have values
         ...(formData.panNumber?.trim() && { panNumber: formData.panNumber.trim() }),
         ...(formData.reference?.trim() && { reference: formData.reference.trim() }),
         ...(formData.drivingLicenceNumber?.trim() && { drivingLicenceNumber: formData.drivingLicenceNumber.trim() }),
-        ...(formData.accountHolderName?.trim() && { accountHolderName: formData.accountHolderName.trim() }),
-        ...(formData.accountNumber?.trim() && { accountNumber: formData.accountNumber.trim() }),
-        ...(formData.branchName?.trim() && { branchName: formData.branchName.trim() }),
-        ...(formData.ifscCode?.trim() && { ifscCode: formData.ifscCode.trim() }),
-        ...(formData.accountType?.trim() && { accountType: formData.accountType.trim() }),
       };
 
       console.log('Submitting driver data:', cleanedData);
@@ -476,11 +504,14 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
               onChange={(e) => handleInputChange('username', e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.username ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`}
+              } ${formData.contactNumber ? 'bg-gray-50 dark:bg-gray-600 cursor-not-allowed' : ''}`}
               placeholder="Enter username"
-              disabled={isLoading}
+              disabled={isLoading || !!formData.contactNumber}
+              readOnly={!!formData.contactNumber}
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">min. 3 characters</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {formData.contactNumber ? 'Auto-filled from contact number' : 'min. 3 characters'}
+            </p>
             {errors.username && (
               <p className="mt-1 text-sm text-red-500">{errors.username}</p>
             )}
@@ -516,7 +547,7 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
             </label>
             <div className="relative">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-10 ${
@@ -525,12 +556,18 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
                 placeholder="Enter password"
                 disabled={isLoading}
               />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeCloseIcon className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
             </div>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">min. 6 characters</p>
             {errors.password && (
@@ -584,22 +621,27 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
           {/* Account Holder Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Account Holder Name
+              Account Holder Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.accountHolderName}
               onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                errors.accountHolderName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
               placeholder="Enter account holder name"
               disabled={isLoading}
             />
+            {errors.accountHolderName && (
+              <p className="mt-1 text-sm text-red-500">{errors.accountHolderName}</p>
+            )}
           </div>
 
           {/* Account Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Account Number
+              Account Number <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -626,22 +668,27 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
           {/* Branch Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Branch Name
+              Branch Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.branchName}
               onChange={(e) => handleInputChange('branchName', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                errors.branchName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
               placeholder="Enter branch name"
               disabled={isLoading}
             />
+            {errors.branchName && (
+              <p className="mt-1 text-sm text-red-500">{errors.branchName}</p>
+            )}
           </div>
 
           {/* IFSC Code */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              IFSC Code
+              IFSC Code <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -668,12 +715,14 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
           {/* Account Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Account Type
+              Account Type <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.accountType}
               onChange={(e) => handleInputChange('accountType', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                errors.accountType ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
               disabled={isLoading}
             >
               <option value="">Select account type</option>
@@ -681,6 +730,9 @@ export default function DriverCreateForm({ onSuccess, onCancel, currentStep, onS
               <option value="current">Current</option>
               <option value="salary">Salary</option>
             </select>
+            {errors.accountType && (
+              <p className="mt-1 text-sm text-red-500">{errors.accountType}</p>
+            )}
           </div>
         </div>
       </div>

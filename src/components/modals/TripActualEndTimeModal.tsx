@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import type { Trip } from '@/store/api/types';
+import { convertDatetimeLocalToUTC, formatDateToDatetimeLocal } from '@/utils/dateFormatter';
 
 interface TripActualEndTimeModalProps {
   isOpen: boolean;
@@ -21,35 +22,26 @@ export default function TripActualEndTimeModal({
 
   useEffect(() => {
     if (isOpen && trip) {
-      // Set current date and time as default
+      // Set current date and time as default using utility function
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      
-      const currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+      const currentDateTime = formatDateToDatetimeLocal(now);
       setActualEndTime(currentDateTime);
     }
   }, [isOpen, trip]);
 
   const handleSetAsNow = () => {
+    // Set current date and time using utility function
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    
-    const currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+    const currentDateTime = formatDateToDatetimeLocal(now);
     setActualEndTime(currentDateTime);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (actualEndTime) {
-      onConfirm(actualEndTime);
+      // Convert datetime-local to UTC before passing to onConfirm
+      const utcTime = convertDatetimeLocalToUTC(actualEndTime);
+      onConfirm(utcTime);
     }
   };
 

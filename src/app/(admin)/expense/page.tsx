@@ -386,7 +386,12 @@ export default function ExpensePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {transactions.map((transaction) => (
+                  {[...transactions].sort((a, b) => {
+                    // Sort by createdAt in descending order (newest first)
+                    const dateA = new Date(a.createdAt).getTime();
+                    const dateB = new Date(b.createdAt).getTime();
+                    return dateB - dateA;
+                  }).map((transaction) => (
                     <tr key={transaction.documentId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {transaction.transactionId}

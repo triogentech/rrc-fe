@@ -7,6 +7,7 @@ import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Trip, TripUpdateRequest, LogisticsProvider } from '@/store/api/types';
 import { TripStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
+import { convertDatetimeLocalToUTC, convertUTCToDatetimeLocal } from '@/utils/dateFormatter';
 
 interface TripEditFormProps {
   trip: Trip;
@@ -166,7 +167,14 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
     }
 
     try {
-      const updatedTrip = await updateTrip(trip.documentId, formData);
+      // Prepare the data for submission with ISO UTC dates
+      const submitData = { ...formData };
+      
+      // Convert datetime-local values to ISO UTC format for API using utility function
+      submitData.estimatedStartTime = convertDatetimeLocalToUTC(submitData.estimatedStartTime);
+      submitData.estimatedEndTime = convertDatetimeLocalToUTC(submitData.estimatedEndTime);
+      
+      const updatedTrip = await updateTrip(trip.documentId, submitData);
       if (updatedTrip) {
         showSuccessToast(`Trip "${updatedTrip.tripNumber}" updated successfully!`);
         onSuccess(updatedTrip);
@@ -238,7 +246,7 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
           <input
             type="datetime-local"
             id="estimatedStartTime"
-            value={formData.estimatedStartTime ? (formData.estimatedStartTime.includes('T') ? formData.estimatedStartTime.slice(0, 16) : new Date(formData.estimatedStartTime).toISOString().slice(0, 16)) : ''}
+            value={convertUTCToDatetimeLocal(formData.estimatedStartTime)}
             onChange={(e) => handleInputChange('estimatedStartTime', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             disabled={isLoading}
@@ -254,7 +262,7 @@ export default function TripEditForm({ trip, onSuccess, onCancel }: TripEditForm
           <input
             type="datetime-local"
             id="estimatedEndTime"
-            value={formData.estimatedEndTime ? (formData.estimatedEndTime.includes('T') ? formData.estimatedEndTime.slice(0, 16) : new Date(formData.estimatedEndTime).toISOString().slice(0, 16)) : ''}
+            value={convertUTCToDatetimeLocal(formData.estimatedEndTime)}
             onChange={(e) => handleInputChange('estimatedEndTime', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             disabled={isLoading}
