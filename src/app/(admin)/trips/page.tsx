@@ -83,8 +83,8 @@ const TripsPage = () => {
   const previousDebouncedValues = useRef<typeof debouncedSearchValues>(debouncedSearchValues);
 
   // Helper function to build search params
-  const buildSearchParams = useCallback((page?: number, useDebounced = true) => {
-    const params: { status?: string; page?: number; vehicleNumber?: string; tripNumber?: string; startPoint?: string; endPoint?: string; distance?: string } = {};
+  const buildSearchParams = useCallback((page?: number, useDebounced = true, limit?: number) => {
+    const params: { status?: string; page?: number; limit?: number; vehicleNumber?: string; tripNumber?: string; startPoint?: string; endPoint?: string; distance?: string } = {};
     
     if (statusFilter) {
       params.status = statusFilter;
@@ -93,6 +93,9 @@ const TripsPage = () => {
     if (page) {
       params.page = page;
     }
+    
+    // Always include limit to ensure proper pagination formatting
+    params.limit = limit || 25;
     
     // Use debounced values for API calls, regular values for display
     const valuesToUse = useDebounced ? debouncedSearchValues : searchValues;
@@ -122,22 +125,45 @@ const TripsPage = () => {
 
   // Debounce search values - update debounced values after user stops typing
   useEffect(() => {
+    // Skip if all search values are empty (initial state or all cleared)
+    const hasAnySearchValue = Object.values(searchValues).some(val => val.trim() !== '');
+    
+    // If no search values, immediately clear debounced values without triggering search
+    if (!hasAnySearchValue) {
+      // Only update if debounced values are not already empty
+      const hasAnyDebouncedValue = Object.values(debouncedSearchValues).some(val => val.trim() !== '');
+      if (hasAnyDebouncedValue) {
+        // Clear all debounced values immediately when all search values are cleared
+        setDebouncedSearchValues({
+          vehicleNumber: '',
+          tripNumber: '',
+          startPoint: '',
+          endPoint: '',
+          distance: '',
+        });
+      }
+      return;
+    }
+
     // Clear all existing timers
     Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
     debounceTimers.current = {};
 
-    // Set up debounce for each search field
+    // Set up debounce for each search field that has a value
     const fields = ['vehicleNumber', 'tripNumber', 'startPoint', 'endPoint', 'distance'] as const;
     
     fields.forEach(field => {
-      const timer = setTimeout(() => {
-        setDebouncedSearchValues(prev => ({
-          ...prev,
-          [field]: searchValues[field],
-        }));
-      }, 500); // 500ms debounce delay
-      
-      debounceTimers.current[field] = timer;
+      // Only set timer if the value has changed
+      if (searchValues[field] !== debouncedSearchValues[field]) {
+        const timer = setTimeout(() => {
+          setDebouncedSearchValues(prev => ({
+            ...prev,
+            [field]: searchValues[field],
+          }));
+        }, 500); // 500ms debounce delay
+        
+        debounceTimers.current[field] = timer;
+      }
     });
 
     // Cleanup function
@@ -145,7 +171,7 @@ const TripsPage = () => {
       Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
       debounceTimers.current = {};
     };
-  }, [searchValues]);
+  }, [searchValues, debouncedSearchValues]);
 
   // Trigger search when debounced values change
   useEffect(() => {
@@ -164,11 +190,21 @@ const TripsPage = () => {
       }
     );
     
-    // Only search if values actually changed
-    if (valuesChanged) {
+    // Only search if values actually changed and there are search values
+    const hasAnySearchValue = Object.values(debouncedSearchValues).some(val => val.trim() !== '');
+    
+    if (valuesChanged && hasAnySearchValue) {
       previousDebouncedValues.current = debouncedSearchValues;
       setIsSearching(true);
-      const params = buildSearchParams(1, true);
+      const params = buildSearchParams(1, true, 25);
+      getTrips(params).finally(() => {
+        setIsSearching(false);
+      });
+    } else if (valuesChanged && !hasAnySearchValue) {
+      // If all search values are cleared, reload with just status filter
+      previousDebouncedValues.current = debouncedSearchValues;
+      setIsSearching(true);
+      const params = buildSearchParams(1, true, 25);
       getTrips(params).finally(() => {
         setIsSearching(false);
       });
@@ -178,15 +214,19 @@ const TripsPage = () => {
   // Initialize status filter from URL parameters
   useEffect(() => {
     const statusFromUrl = searchParams.get('status');
-    if (statusFromUrl) {
-      setStatusFilter(statusFromUrl);
-      getTrips(buildSearchParams(1, false));
-    } else {
-      // Default to "in-transit" if no status is specified
-      setStatusFilter('in-transit');
-      getTrips(buildSearchParams(1, false));
-    }
-  }, [searchParams, getTrips]); // eslint-disable-line react-hooks/exhaustive-deps
+    const finalStatus = statusFromUrl || 'in-transit';
+    
+    setStatusFilter(finalStatus);
+    
+    // Build params with the status directly to avoid state update delay
+    const params: { status: string; page: number; limit: number } = {
+      status: finalStatus,
+      page: 1,
+      limit: 25,
+    };
+    
+    getTrips(params);
+  }, [searchParams, getTrips]);
 
   // Handle search icon click
   const handleSearchIconClick = (column: string) => {
@@ -227,7 +267,7 @@ const TripsPage = () => {
 
     // Immediately trigger search with cleared value
     setIsSearching(true);
-    const params = buildSearchParams(1, false);
+    const params = buildSearchParams(1, false, 25);
     // Remove the cleared search field
     if (column === 'vehicleNumber') {
       delete params.vehicleNumber;
@@ -377,11 +417,11 @@ const TripsPage = () => {
 
   // Handle trip creation success
   const handleTripCreated = (trip: Trip) => {
-    console.log('Trip created successfully:', trip);
-    showSuccessToast(`Trip "${trip.tripNumber}" created successfully!`);
-    // Refresh the trips list
-    getTrips(buildSearchParams(1));
-    handleSuccess(trip);
+          console.log('Trip created successfully:', trip);
+          showSuccessToast(`Trip "${trip.tripNumber}" created successfully!`);
+          // Refresh the trips list
+          getTrips(buildSearchParams(1, false, 25));
+          handleSuccess(trip);
   };
 
   // Handle view trip
@@ -410,11 +450,11 @@ const TripsPage = () => {
 
   // Handle trip update success
   const handleTripUpdated = (trip: Trip) => {
-    console.log('Trip updated successfully:', trip);
-    showSuccessToast(`Trip "${trip.tripNumber}" updated successfully!`);
-    // Refresh the trips list
-    getTrips(buildSearchParams(pagination?.page || 1));
-    handleCloseEditModal();
+          console.log('Trip updated successfully:', trip);
+          showSuccessToast(`Trip "${trip.tripNumber}" updated successfully!`);
+          // Refresh the trips list
+          getTrips(buildSearchParams(pagination?.page || 1, false, 25));
+          handleCloseEditModal();
   };
 
   // Handle delete trip
@@ -441,7 +481,7 @@ const TripsPage = () => {
         console.log('Trip deleted successfully');
         showSuccessToast(`Trip "${selectedTrip.tripNumber}" deleted successfully!`);
         // Refresh the trips list
-        getTrips(buildSearchParams(pagination?.page || 1));
+        getTrips(buildSearchParams(pagination?.page || 1, false, 25));
         handleCloseDeleteModal();
       }
     } catch (error) {
@@ -532,10 +572,10 @@ const TripsPage = () => {
           // Don't throw here, as trip was already updated successfully
         }
       }
-      
-      // Refresh the trips list
-      getTrips(buildSearchParams(pagination?.page || 1));
-    } catch (error) {
+          
+          // Refresh the trips list
+          getTrips(buildSearchParams(pagination?.page || 1, false, 25));
+        } catch (error) {
       console.error('Error updating trip status:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
       
@@ -627,10 +667,10 @@ const TripsPage = () => {
           // Don't throw here, as trip was already updated successfully
         }
       }
-      
-      // Refresh the trips list
-      getTrips(buildSearchParams(pagination?.page || 1));
-      handleCloseActualEndTimeModal();
+          
+          // Refresh the trips list
+          getTrips(buildSearchParams(pagination?.page || 1, false, 25));
+          handleCloseActualEndTimeModal();
     } catch (error) {
       console.error('Error setting actual end time:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -1260,7 +1300,7 @@ const TripsPage = () => {
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={() => getTrips(buildSearchParams(pagination.page - 1))}
+                onClick={() => getTrips(buildSearchParams(pagination.page - 1, false, 25))}
                 disabled={pagination.page === 1}
                 className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
               >
@@ -1270,7 +1310,7 @@ const TripsPage = () => {
                 Page {pagination.page} of {pagination.pageCount}
               </span>
               <button
-                onClick={() => getTrips(buildSearchParams(pagination.page + 1))}
+                onClick={() => getTrips(buildSearchParams(pagination.page + 1, false, 25))}
                 disabled={pagination.page === pagination.pageCount}
                 className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
               >
@@ -1402,12 +1442,7 @@ const TripsPage = () => {
                   
                   // Immediately trigger search with cleared values
                   setIsSearching(true);
-                  const params: { status?: string; page?: number } = {
-                    page: 1,
-                  };
-                  if (statusFilter) {
-                    params.status = statusFilter;
-                  }
+                  const params = buildSearchParams(1, false, 25);
                   getTrips(params).finally(() => {
                     setIsSearching(false);
                   });
