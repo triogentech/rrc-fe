@@ -678,8 +678,8 @@ export const tripService = {
   /**
    * Get all trips
    */
-  getTrips: (params?: PaginationParams & { search?: string; status?: string }) => {
-    const { page, limit, search, status, ...otherParams } = params || {};
+  getTrips: (params?: PaginationParams & { search?: string; status?: string; tripNumber?: string; vehicleNumber?: string; startPoint?: string; endPoint?: string; distance?: string }) => {
+    const { page, limit, search, status, tripNumber, vehicleNumber, startPoint, endPoint, distance, ...otherParams } = params || {};
     
     const queryParams: Record<string, unknown> = {
       populate: '*',
@@ -694,9 +694,35 @@ export const tripService = {
       };
     }
 
-    // Add search parameter if provided
+    // Add search parameter if provided (generic search)
     if (search) {
       queryParams.search = search;
+    }
+
+    // Add field-specific filters
+    if (tripNumber && tripNumber.trim()) {
+      queryParams['filters[tripNumber][$containsi]'] = tripNumber.trim();
+    }
+
+    if (vehicleNumber && vehicleNumber.trim()) {
+      queryParams['filters[vehicle][vehicleNumber][$containsi]'] = vehicleNumber.trim();
+    }
+
+    if (startPoint && startPoint.trim()) {
+      queryParams['filters[startPoint][$containsi]'] = startPoint.trim();
+    }
+
+    if (endPoint && endPoint.trim()) {
+      queryParams['filters[endPoint][$containsi]'] = endPoint.trim();
+    }
+
+    if (distance && distance.trim()) {
+      // For distance, we can search by exact match or range
+      // For now, let's do a contains search on the numeric value
+      const distanceNum = parseFloat(distance.trim());
+      if (!isNaN(distanceNum)) {
+        queryParams['filters[totalTripDistanceInKM][$eq]'] = distanceNum;
+      }
     }
 
     // Add status filter if provided

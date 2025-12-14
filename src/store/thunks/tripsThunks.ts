@@ -16,7 +16,7 @@ import { logout } from '../slices/authSlice';
 
 export const getTripsThunk = createAsyncThunk<
   void,
-  PaginationParams & { search?: string } | undefined,
+  PaginationParams & { search?: string; status?: string; tripNumber?: string; vehicleNumber?: string; startPoint?: string; endPoint?: string; distance?: string } | undefined,
   { rejectValue: string }
 >(
   'trips/getTrips',

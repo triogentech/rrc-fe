@@ -33,7 +33,7 @@ export const useTrips = () => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
   // API Actions
-  const getTrips = useCallback(async (params?: PaginationParams & { search?: string; status?: string }): Promise<void> => {
+  const getTrips = useCallback(async (params?: PaginationParams & { search?: string; status?: string; tripNumber?: string; vehicleNumber?: string; startPoint?: string; endPoint?: string; distance?: string }): Promise<void> => {
     await dispatch(getTripsThunk(params));
   }, [dispatch]);
 

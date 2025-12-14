@@ -266,7 +266,7 @@ export default function EndingTripsPage() {
                       
                       {/* End Time */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getEndTime(trip)}
+                          {getEndTime(trip)}
                       </td>
                       
                       {/* Status */}

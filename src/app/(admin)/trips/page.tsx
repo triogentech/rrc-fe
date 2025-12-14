@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@/store/hooks/useTrips';
 import { useVehicles } from '@/store/hooks/useVehicles';
@@ -12,6 +12,7 @@ import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import type { Trip } from '@/store/api/types';
 import { TripStatus, VehicleCurrentStatus } from '@/store/api/types';
 import { EyeIcon, PencilIcon, TrashBinIcon } from '@/icons';
+import { FaSearch } from 'react-icons/fa';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
 import { formatDateTimeToIST } from '@/utils/dateFormatter';
@@ -41,19 +42,210 @@ const TripsPage = () => {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingActualEndTime, setIsSettingActualEndTime] = useState(false);
+  
+  // Search state
+  const [activeSearchColumn, setActiveSearchColumn] = useState<string | null>(null);
+  const [searchValues, setSearchValues] = useState<{
+    vehicleNumber: string;
+    tripNumber: string;
+    startPoint: string;
+    endPoint: string;
+    distance: string;
+  }>({
+    vehicleNumber: '',
+    tripNumber: '',
+    startPoint: '',
+    endPoint: '',
+    distance: '',
+  });
+  
+  // Debounced search values for actual API calls
+  const [debouncedSearchValues, setDebouncedSearchValues] = useState<{
+    vehicleNumber: string;
+    tripNumber: string;
+    startPoint: string;
+    endPoint: string;
+    distance: string;
+  }>({
+    vehicleNumber: '',
+    tripNumber: '',
+    startPoint: '',
+    endPoint: '',
+    distance: '',
+  });
+  
+  // Search loading state
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Refs for debounce timers
+  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const isInitialMount = useRef(true);
+  const previousDebouncedValues = useRef<typeof debouncedSearchValues>(debouncedSearchValues);
+
+  // Helper function to build search params
+  const buildSearchParams = useCallback((page?: number, useDebounced = true) => {
+    const params: { status?: string; page?: number; vehicleNumber?: string; tripNumber?: string; startPoint?: string; endPoint?: string; distance?: string } = {};
+    
+    if (statusFilter) {
+      params.status = statusFilter;
+    }
+    
+    if (page) {
+      params.page = page;
+    }
+    
+    // Use debounced values for API calls, regular values for display
+    const valuesToUse = useDebounced ? debouncedSearchValues : searchValues;
+    
+    if (valuesToUse.vehicleNumber.trim()) {
+      params.vehicleNumber = valuesToUse.vehicleNumber.trim();
+    }
+    
+    if (valuesToUse.tripNumber.trim()) {
+      params.tripNumber = valuesToUse.tripNumber.trim();
+    }
+    
+    if (valuesToUse.startPoint.trim()) {
+      params.startPoint = valuesToUse.startPoint.trim();
+    }
+    
+    if (valuesToUse.endPoint.trim()) {
+      params.endPoint = valuesToUse.endPoint.trim();
+    }
+    
+    if (valuesToUse.distance.trim()) {
+      params.distance = valuesToUse.distance.trim();
+    }
+    
+    return params;
+  }, [statusFilter, searchValues, debouncedSearchValues]);
+
+  // Debounce search values - update debounced values after user stops typing
+  useEffect(() => {
+    // Clear all existing timers
+    Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+    debounceTimers.current = {};
+
+    // Set up debounce for each search field
+    const fields = ['vehicleNumber', 'tripNumber', 'startPoint', 'endPoint', 'distance'] as const;
+    
+    fields.forEach(field => {
+      const timer = setTimeout(() => {
+        setDebouncedSearchValues(prev => ({
+          ...prev,
+          [field]: searchValues[field],
+        }));
+      }, 500); // 500ms debounce delay
+      
+      debounceTimers.current[field] = timer;
+    });
+
+    // Cleanup function
+    return () => {
+      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+      debounceTimers.current = {};
+    };
+  }, [searchValues]);
+
+  // Trigger search when debounced values change
+  useEffect(() => {
+    // Skip initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      previousDebouncedValues.current = debouncedSearchValues;
+      return;
+    }
+    
+    // Check if debounced values actually changed
+    const valuesChanged = Object.keys(debouncedSearchValues).some(
+      key => {
+        const typedKey = key as keyof typeof debouncedSearchValues;
+        return debouncedSearchValues[typedKey] !== previousDebouncedValues.current[typedKey];
+      }
+    );
+    
+    // Only search if values actually changed
+    if (valuesChanged) {
+      previousDebouncedValues.current = debouncedSearchValues;
+      setIsSearching(true);
+      const params = buildSearchParams(1, true);
+      getTrips(params).finally(() => {
+        setIsSearching(false);
+      });
+    }
+  }, [debouncedSearchValues, getTrips, buildSearchParams]);
 
   // Initialize status filter from URL parameters
   useEffect(() => {
     const statusFromUrl = searchParams.get('status');
     if (statusFromUrl) {
       setStatusFilter(statusFromUrl);
-      getTrips({ status: statusFromUrl, page: 1 });
+      getTrips(buildSearchParams(1, false));
     } else {
       // Default to "in-transit" if no status is specified
       setStatusFilter('in-transit');
-      getTrips({ status: 'in-transit', page: 1 });
+      getTrips(buildSearchParams(1, false));
     }
-  }, [searchParams, getTrips]);
+  }, [searchParams, getTrips]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle search icon click
+  const handleSearchIconClick = (column: string) => {
+    setActiveSearchColumn(activeSearchColumn === column ? null : column);
+  };
+
+  // Handle search input change
+  const handleSearchChange = (column: string, value: string) => {
+    setSearchValues(prev => ({
+      ...prev,
+      [column]: value,
+    }));
+  };
+
+  // Handle search submit (now just closes the search bar, search happens automatically via debounce)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSearchSubmit = (column: string) => {
+    setActiveSearchColumn(null);
+  };
+
+  // Handle clear search
+  const handleClearSearch = (column: string) => {
+    // Clear both immediate and debounced values
+    setSearchValues(prev => ({
+      ...prev,
+      [column]: '',
+    }));
+    setDebouncedSearchValues(prev => ({
+      ...prev,
+      [column]: '',
+    }));
+    
+    // Clear the debounce timer for this field
+    if (debounceTimers.current[column]) {
+      clearTimeout(debounceTimers.current[column]);
+      delete debounceTimers.current[column];
+    }
+
+    // Immediately trigger search with cleared value
+    setIsSearching(true);
+    const params = buildSearchParams(1, false);
+    // Remove the cleared search field
+    if (column === 'vehicleNumber') {
+      delete params.vehicleNumber;
+    } else if (column === 'tripNumber') {
+      delete params.tripNumber;
+    } else if (column === 'startPoint') {
+      delete params.startPoint;
+    } else if (column === 'endPoint') {
+      delete params.endPoint;
+    } else if (column === 'distance') {
+      delete params.distance;
+    }
+
+    getTrips(params).finally(() => {
+      setIsSearching(false);
+    });
+    setActiveSearchColumn(null);
+  };
 
   // Filter trips based on status filter
   const filteredTrips = statusFilter 
@@ -188,7 +380,7 @@ const TripsPage = () => {
     console.log('Trip created successfully:', trip);
     showSuccessToast(`Trip "${trip.tripNumber}" created successfully!`);
     // Refresh the trips list
-    getTrips();
+    getTrips(buildSearchParams(1));
     handleSuccess(trip);
   };
 
@@ -221,7 +413,7 @@ const TripsPage = () => {
     console.log('Trip updated successfully:', trip);
     showSuccessToast(`Trip "${trip.tripNumber}" updated successfully!`);
     // Refresh the trips list
-    getTrips();
+    getTrips(buildSearchParams(pagination?.page || 1));
     handleCloseEditModal();
   };
 
@@ -249,7 +441,7 @@ const TripsPage = () => {
         console.log('Trip deleted successfully');
         showSuccessToast(`Trip "${selectedTrip.tripNumber}" deleted successfully!`);
         // Refresh the trips list
-        getTrips();
+        getTrips(buildSearchParams(pagination?.page || 1));
         handleCloseDeleteModal();
       }
     } catch (error) {
@@ -342,7 +534,7 @@ const TripsPage = () => {
       }
       
       // Refresh the trips list
-      getTrips();
+      getTrips(buildSearchParams(pagination?.page || 1));
     } catch (error) {
       console.error('Error updating trip status:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -437,7 +629,7 @@ const TripsPage = () => {
       }
       
       // Refresh the trips list
-      getTrips();
+      getTrips(buildSearchParams(pagination?.page || 1));
       handleCloseActualEndTimeModal();
     } catch (error) {
       console.error('Error setting actual end time:', error);
@@ -475,61 +667,350 @@ const TripsPage = () => {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Vehicle
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      Vehicle
+                      <button
+                        type="button"
+                        onClick={() => handleSearchIconClick('vehicleNumber')}
+                        className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        title="Search by vehicle number"
+                      >
+                        <FaSearch className={`w-3.5 h-3.5 transition-colors ${
+                          searchValues.vehicleNumber.trim() 
+                            ? 'text-blue-500' 
+                            : 'text-gray-400 hover:text-blue-500'
+                        }`} />
+                      </button>
+                    </div>
+                    {activeSearchColumn === 'vehicleNumber' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={searchValues.vehicleNumber}
+                            onChange={(e) => handleSearchChange('vehicleNumber', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearchSubmit('vehicleNumber');
+                              }
+                            }}
+                            placeholder="Search vehicle... (auto-searches)"
+                            className="w-full px-2 py-1 pr-6 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            autoFocus
+                            disabled={isSearching}
+                          />
+                          {isSearching && searchValues.vehicleNumber.trim() !== debouncedSearchValues.vehicleNumber && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClearSearch('vehicleNumber')}
+                          className="px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+                          title="Clear"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Trip Number
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      Trip Number
+                      <button
+                        type="button"
+                        onClick={() => handleSearchIconClick('tripNumber')}
+                        className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        title="Search by trip number"
+                      >
+                        <FaSearch className={`w-3.5 h-3.5 transition-colors ${
+                          searchValues.tripNumber.trim() 
+                            ? 'text-blue-500' 
+                            : 'text-gray-400 hover:text-blue-500'
+                        }`} />
+                      </button>
+                    </div>
+                    {activeSearchColumn === 'tripNumber' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={searchValues.tripNumber}
+                            onChange={(e) => handleSearchChange('tripNumber', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearchSubmit('tripNumber');
+                              }
+                            }}
+                            placeholder="Search trip number... (auto-searches)"
+                            className="w-full px-2 py-1 pr-6 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            autoFocus
+                            disabled={isSearching}
+                          />
+                          {isSearching && searchValues.tripNumber.trim() !== debouncedSearchValues.tripNumber && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClearSearch('tripNumber')}
+                          className="px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+                          title="Clear"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Trip From
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      Trip From
+                      <button
+                        type="button"
+                        onClick={() => handleSearchIconClick('startPoint')}
+                        className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        title="Search by start point"
+                      >
+                        <FaSearch className={`w-3.5 h-3.5 transition-colors ${
+                          searchValues.startPoint.trim() 
+                            ? 'text-blue-500' 
+                            : 'text-gray-400 hover:text-blue-500'
+                        }`} />
+                      </button>
+                    </div>
+                    {activeSearchColumn === 'startPoint' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={searchValues.startPoint}
+                            onChange={(e) => handleSearchChange('startPoint', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearchSubmit('startPoint');
+                              }
+                            }}
+                            placeholder="Search start point... (auto-searches)"
+                            className="w-full px-2 py-1 pr-6 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            autoFocus
+                            disabled={isSearching}
+                          />
+                          {isSearching && searchValues.startPoint.trim() !== debouncedSearchValues.startPoint && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClearSearch('startPoint')}
+                          className="px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+                          title="Clear"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Trip To
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      Trip To
+                      <button
+                        type="button"
+                        onClick={() => handleSearchIconClick('endPoint')}
+                        className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        title="Search by end point"
+                      >
+                        <FaSearch className={`w-3.5 h-3.5 transition-colors ${
+                          searchValues.endPoint.trim() 
+                            ? 'text-blue-500' 
+                            : 'text-gray-400 hover:text-blue-500'
+                        }`} />
+                      </button>
+                    </div>
+                    {activeSearchColumn === 'endPoint' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={searchValues.endPoint}
+                            onChange={(e) => handleSearchChange('endPoint', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearchSubmit('endPoint');
+                              }
+                            }}
+                            placeholder="Search end point... (auto-searches)"
+                            className="w-full px-2 py-1 pr-6 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            autoFocus
+                            disabled={isSearching}
+                          />
+                          {isSearching && searchValues.endPoint.trim() !== debouncedSearchValues.endPoint && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClearSearch('endPoint')}
+                          className="px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+                          title="Clear"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Distance (KM)
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      Distance (KM)
+                      <button
+                        type="button"
+                        onClick={() => handleSearchIconClick('distance')}
+                        className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        title="Search by distance"
+                      >
+                        <FaSearch className={`w-3.5 h-3.5 transition-colors ${
+                          searchValues.distance.trim() 
+                            ? 'text-blue-500' 
+                            : 'text-gray-400 hover:text-blue-500'
+                        }`} />
+                      </button>
+                    </div>
+                    {activeSearchColumn === 'distance' && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="flex-1 relative">
+                          <input
+                            type="number"
+                            value={searchValues.distance}
+                            onChange={(e) => handleSearchChange('distance', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearchSubmit('distance');
+                              }
+                            }}
+                            placeholder="Search distance... (auto-searches)"
+                            className="w-full px-2 py-1 pr-6 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            autoFocus
+                            step="0.1"
+                            min="0"
+                            disabled={isSearching}
+                          />
+                          {isSearching && searchValues.distance.trim() !== debouncedSearchValues.distance && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClearSearch('distance')}
+                          className="px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+                          title="Clear"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Start Time
+                  <div className="flex items-center gap-2">
+                    Start Time
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  End Time
+                  <div className="flex items-center gap-2">
+                    End Time
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Freight Amount
+                  <div className="flex items-center gap-2">
+                    Freight Amount
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Advance Amount
+                  <div className="flex items-center gap-2">
+                    Advance Amount
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Balance Amount
+                  <div className="flex items-center gap-2">
+                    Balance Amount
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  TAT
+                  <div className="flex items-center gap-2">
+                    TAT
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actual End Time
+                  <div className="flex items-center gap-2">
+                    Actual End Time
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Running TAT
+                  <div className="flex items-center gap-2">
+                    Running TAT
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Status
+                  <div className="flex items-center gap-2">
+                    Status
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Driver
+                  <div className="flex items-center gap-2">
+                    Driver
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Logistics Provider
+                  <div className="flex items-center gap-2">
+                    Logistics Provider
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Created By
+                  <div className="flex items-center gap-2">
+                    Created By
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Updated By
+                  <div className="flex items-center gap-2">
+                    Updated By
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
+                  <div className="flex items-center gap-2">
+                    Actions
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -779,7 +1260,7 @@ const TripsPage = () => {
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={() => getTrips({ page: pagination.page - 1 })}
+                onClick={() => getTrips(buildSearchParams(pagination.page - 1))}
                 disabled={pagination.page === 1}
                 className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
               >
@@ -789,7 +1270,7 @@ const TripsPage = () => {
                 Page {pagination.page} of {pagination.pageCount}
               </span>
               <button
-                onClick={() => getTrips({ page: pagination.page + 1 })}
+                onClick={() => getTrips(buildSearchParams(pagination.page + 1))}
                 disabled={pagination.page === pagination.pageCount}
                 className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
               >
@@ -829,6 +1310,115 @@ const TripsPage = () => {
           </button>
         </div>
 
+        {/* Active Search Filters */}
+        {(searchValues.vehicleNumber.trim() || searchValues.tripNumber.trim() || searchValues.startPoint.trim() || searchValues.endPoint.trim() || searchValues.distance.trim()) && (
+          <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Active Searches:</span>
+                {isSearching && (
+                  <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                    <span>Searching...</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {searchValues.vehicleNumber.trim() && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      Vehicle: &quot;{searchValues.vehicleNumber}&quot;
+                      <button
+                        type="button"
+                        onClick={() => handleClearSearch('vehicleNumber')}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear vehicle search"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {searchValues.tripNumber.trim() && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      Trip Number: &quot;{searchValues.tripNumber}&quot;
+                      <button
+                        type="button"
+                        onClick={() => handleClearSearch('tripNumber')}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear trip number search"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {searchValues.startPoint.trim() && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      Trip From: &quot;{searchValues.startPoint}&quot;
+                      <button
+                        type="button"
+                        onClick={() => handleClearSearch('startPoint')}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear start point search"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {searchValues.endPoint.trim() && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      Trip To: &quot;{searchValues.endPoint}&quot;
+                      <button
+                        type="button"
+                        onClick={() => handleClearSearch('endPoint')}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear end point search"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {searchValues.distance.trim() && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      Distance: &quot;{searchValues.distance} km&quot;
+                      <button
+                        type="button"
+                        onClick={() => handleClearSearch('distance')}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear distance search"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  // Clear all debounce timers
+                  Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+                  debounceTimers.current = {};
+                  
+                  // Clear both immediate and debounced search values
+                  setSearchValues({ vehicleNumber: '', tripNumber: '', startPoint: '', endPoint: '', distance: '' });
+                  setDebouncedSearchValues({ vehicleNumber: '', tripNumber: '', startPoint: '', endPoint: '', distance: '' });
+                  
+                  // Immediately trigger search with cleared values
+                  setIsSearching(true);
+                  const params: { status?: string; page?: number } = {
+                    page: 1,
+                  };
+                  if (statusFilter) {
+                    params.status = statusFilter;
+                  }
+                  getTrips(params).finally(() => {
+                    setIsSearching(false);
+                  });
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (
