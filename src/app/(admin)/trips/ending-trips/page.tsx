@@ -24,26 +24,31 @@ export default function EndingTripsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await tripService.getTripsEndingToday({
+      // Fetch all in-transit trips (or all trips if needed)
+      // We'll filter client-side for trips that have surpassed their end time
+      const response = await tripService.getTrips({
         page: page || 1,
-        limit: 25,
+        limit: 100, // Fetch more to filter client-side
+        status: 'in-transit', // Only get in-transit trips
       });
       
-      console.log('Ending Trips fetch response:', response);
+      console.log('Trips fetch response:', response);
       
-      let tripsData: Trip[] = [];
-      let paginationData: {
+      type PaginationType = {
         page: number;
         pageSize: number;
         pageCount: number;
         total: number;
-      } | null = null;
+      };
+      
+      let tripsData: Trip[] = [];
+      let paginationData: PaginationType | null = null;
       
       if (response.data) {
         if (Array.isArray(response.data)) {
           tripsData = response.data;
         } else if (typeof response.data === 'object' && 'data' in response.data) {
-          const strapiResponse = response.data as unknown as { data: Trip[]; meta?: { pagination?: typeof paginationData } };
+          const strapiResponse = response.data as unknown as { data: Trip[]; meta?: { pagination?: PaginationType } };
           if (Array.isArray(strapiResponse.data)) {
             tripsData = strapiResponse.data;
           }
@@ -53,19 +58,51 @@ export default function EndingTripsPage() {
         }
       }
       
-      const responseWithMeta = response as typeof response & { meta?: { pagination?: typeof paginationData } };
+      const responseWithMeta = response as typeof response & { meta?: { pagination?: PaginationType } };
       if (responseWithMeta.meta?.pagination) {
         paginationData = responseWithMeta.meta.pagination;
       }
       
-      setTrips(tripsData);
+      // Filter trips that have surpassed their estimated end time
+      const now = new Date();
+      const overdueTrips = tripsData.filter((trip) => {
+        if (!trip.estimatedEndTime) return false;
+        const endTime = new Date(trip.estimatedEndTime);
+        return endTime < now; // Trip has passed its estimated end time
+      });
+      
+      // Sort by how overdue they are (most overdue first)
+      overdueTrips.sort((a, b) => {
+        if (!a.estimatedEndTime || !b.estimatedEndTime) return 0;
+        const timeA = new Date(a.estimatedEndTime).getTime();
+        const timeB = new Date(b.estimatedEndTime).getTime();
+        return timeA - timeB; // Oldest first (most overdue)
+      });
+      
+      setTrips(overdueTrips);
+      
+      // Update pagination to reflect filtered results
       if (paginationData) {
-        setPagination(paginationData);
+        const pageSize = paginationData.pageSize || 25;
+        setPagination({
+          page: paginationData.page,
+          pageSize: pageSize,
+          total: overdueTrips.length,
+          pageCount: Math.ceil(overdueTrips.length / pageSize),
+        });
+      } else {
+        // Set default pagination if none exists
+        setPagination({
+          page: 1,
+          pageSize: 25,
+          total: overdueTrips.length,
+          pageCount: Math.ceil(overdueTrips.length / 25),
+        });
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch ending trips';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch overdue trips';
       setError(errorMessage);
-      console.error('Error fetching ending trips:', err);
+      console.error('Error fetching overdue trips:', err);
       showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
@@ -113,18 +150,48 @@ export default function EndingTripsPage() {
     );
   };
 
-  // Helper function to get end time
-  const getEndTime = (trip: Trip): string => {
+  // Helper function to get end time with overdue indicator
+  const getEndTime = (trip: Trip): React.ReactNode => {
     if (!trip.estimatedEndTime) return 'N/A';
-    return formatDateTimeToIST(trip.estimatedEndTime);
+    
+    const endTime = new Date(trip.estimatedEndTime);
+    const now = new Date();
+    const isOverdue = endTime < now;
+    
+    // Calculate how overdue
+    const diffMs = now.getTime() - endTime.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    let overdueText = '';
+    if (diffHours > 0) {
+      overdueText = `${diffHours}h ${diffMinutes}m overdue`;
+    } else if (diffMinutes > 0) {
+      overdueText = `${diffMinutes}m overdue`;
+    } else {
+      overdueText = 'Just overdue';
+    }
+    
+    return (
+      <div className="flex flex-col">
+        <div className="text-sm text-gray-900 dark:text-white">
+          {formatDateTimeToIST(trip.estimatedEndTime)}
+        </div>
+        {isOverdue && (
+          <div className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">
+            {overdueText}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
       <div className="col-span-12">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ending Trips</h1>
-          <p className="text-gray-600 dark:text-gray-400">View all trips ending today</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Overdue Trips</h1>
+          <p className="text-gray-600 dark:text-gray-400">View all trips that have surpassed their estimated end time</p>
         </div>
 
         {error && (
@@ -136,24 +203,29 @@ export default function EndingTripsPage() {
         {isLoading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading ending trips...</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading overdue trips...</span>
           </div>
         )}
 
         {!isLoading && trips.length === 0 && !error && (
           <div className="text-center py-8">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No trips ending today</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">No trips are scheduled to end today.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No overdue trips</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">All trips are on schedule. No trips have surpassed their estimated end time.</p>
           </div>
         )}
 
         {!isLoading && trips.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Trips Ending Today</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Overdue Trips ({trips.length})
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Trips that have passed their estimated end time
+              </p>
             </div>
 
             <div className="overflow-x-auto">
@@ -167,7 +239,10 @@ export default function EndingTripsPage() {
                       Route
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      End Time
+                      Estimated End Time
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Status
                     </th>
                   </tr>
                 </thead>
@@ -191,9 +266,14 @@ export default function EndingTripsPage() {
                       
                       {/* End Time */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {getEndTime(trip)}
-                        </div>
+                        {getEndTime(trip)}
+                      </td>
+                      
+                      {/* Status */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          Overdue
+                        </span>
                       </td>
                       
                     </tr>
