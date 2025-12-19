@@ -678,8 +678,8 @@ export const tripService = {
   /**
    * Get all trips
    */
-  getTrips: (params?: PaginationParams & { search?: string; status?: string; tripNumber?: string; vehicleNumber?: string; startPoint?: string; endPoint?: string; distance?: string }) => {
-    const { page, limit, search, status, tripNumber, vehicleNumber, startPoint, endPoint, distance, ...otherParams } = params || {};
+  getTrips: (params?: PaginationParams & { search?: string; status?: string; tripNumber?: string; vehicleNumber?: string; startPoint?: string; endPoint?: string; distance?: string; startDate?: string; endDate?: string }) => {
+    const { page, limit, search, status, tripNumber, vehicleNumber, startPoint, endPoint, distance, startDate, endDate, ...otherParams } = params || {};
     
     const queryParams: Record<string, unknown> = {
       populate: '*',
@@ -723,6 +723,40 @@ export const tripService = {
       if (!isNaN(distanceNum)) {
         queryParams['filters[totalTripDistanceInKM][$eq]'] = distanceNum;
       }
+    }
+
+    // Add date filters
+    // If only startDate is provided, filter trips starting on that specific date
+    // If only endDate is provided, filter trips ending on that specific date
+    // If both are provided, filter trips within the date range
+    if (startDate && !endDate) {
+      // Only start date: filter trips that start on this specific date
+      const startDateObj = new Date(startDate);
+      startDateObj.setHours(0, 0, 0, 0);
+      const startDateEnd = new Date(startDate);
+      startDateEnd.setHours(23, 59, 59, 999);
+      
+      queryParams['filters[estimatedStartTime][$gte]'] = startDateObj.toISOString();
+      queryParams['filters[estimatedStartTime][$lte]'] = startDateEnd.toISOString();
+    } else if (endDate && !startDate) {
+      // Only end date: filter trips that end on this specific date
+      const endDateObj = new Date(endDate);
+      endDateObj.setHours(0, 0, 0, 0);
+      const endDateEnd = new Date(endDate);
+      endDateEnd.setHours(23, 59, 59, 999);
+      
+      queryParams['filters[estimatedEndTime][$gte]'] = endDateObj.toISOString();
+      queryParams['filters[estimatedEndTime][$lte]'] = endDateEnd.toISOString();
+    } else if (startDate && endDate) {
+      // Both dates: filter trips within the date range
+      // Trips that start on or after startDate AND end on or before endDate
+      const startDateObj = new Date(startDate);
+      startDateObj.setHours(0, 0, 0, 0);
+      const endDateObj = new Date(endDate);
+      endDateObj.setHours(23, 59, 59, 999);
+      
+      queryParams['filters[estimatedStartTime][$gte]'] = startDateObj.toISOString();
+      queryParams['filters[estimatedEndTime][$lte]'] = endDateObj.toISOString();
     }
 
     // Add status filter if provided

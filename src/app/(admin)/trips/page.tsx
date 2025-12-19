@@ -16,6 +16,7 @@ import { FaSearch } from 'react-icons/fa';
 import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
 import { formatDateTimeToIST } from '@/utils/dateFormatter';
+import DateFilter from '@/components/common/DateFilter';
 
 const TripsPage = () => {
   const searchParams = useSearchParams();
@@ -42,6 +43,10 @@ const TripsPage = () => {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingActualEndTime, setIsSettingActualEndTime] = useState(false);
+  
+  // Date filter state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   // Search state
   const [activeSearchColumn, setActiveSearchColumn] = useState<string | null>(null);
@@ -84,7 +89,7 @@ const TripsPage = () => {
 
   // Helper function to build search params
   const buildSearchParams = useCallback((page?: number, useDebounced = true, limit?: number) => {
-    const params: { status?: string; page?: number; limit?: number; vehicleNumber?: string; tripNumber?: string; startPoint?: string; endPoint?: string; distance?: string } = {};
+    const params: { status?: string; page?: number; limit?: number; vehicleNumber?: string; tripNumber?: string; startPoint?: string; endPoint?: string; distance?: string; startDate?: string; endDate?: string } = {};
     
     if (statusFilter) {
       params.status = statusFilter;
@@ -120,8 +125,17 @@ const TripsPage = () => {
       params.distance = valuesToUse.distance.trim();
     }
     
+    // Add date filters
+    if (startDate) {
+      params.startDate = startDate;
+    }
+    
+    if (endDate) {
+      params.endDate = endDate;
+    }
+    
     return params;
-  }, [statusFilter, searchValues, debouncedSearchValues]);
+  }, [statusFilter, searchValues, debouncedSearchValues, startDate, endDate]);
 
   // Debounce search values - update debounced values after user stops typing
   useEffect(() => {
@@ -285,6 +299,30 @@ const TripsPage = () => {
       setIsSearching(false);
     });
     setActiveSearchColumn(null);
+  };
+
+  // Handle date filter change from DateFilter component
+  const handleDateFilterChange = (newStartDate: string | null, newEndDate: string | null) => {
+    setStartDate(newStartDate || '');
+    setEndDate(newEndDate || '');
+    
+    // Trigger search immediately when date changes
+    setIsSearching(true);
+    const params = buildSearchParams(1, false, 25);
+    if (newStartDate) {
+      params.startDate = newStartDate;
+    } else {
+      delete params.startDate;
+    }
+    if (newEndDate) {
+      params.endDate = newEndDate;
+    } else {
+      delete params.endDate;
+    }
+    
+    getTrips(params).finally(() => {
+      setIsSearching(false);
+    });
   };
 
   // Filter trips based on status filter
@@ -1350,12 +1388,20 @@ const TripsPage = () => {
           </button>
         </div>
 
+        {/* Date Filters */}
+        <div className="mb-6">
+          <DateFilter
+            onDateChange={handleDateFilterChange}
+            disabled={isSearching}
+          />
+        </div>
+
         {/* Active Search Filters */}
-        {(searchValues.vehicleNumber.trim() || searchValues.tripNumber.trim() || searchValues.startPoint.trim() || searchValues.endPoint.trim() || searchValues.distance.trim()) && (
+        {(searchValues.vehicleNumber.trim() || searchValues.tripNumber.trim() || searchValues.startPoint.trim() || searchValues.endPoint.trim() || searchValues.distance.trim() || startDate || endDate) && (
           <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Active Searches:</span>
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Active Filters:</span>
                 {isSearching && (
                   <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
@@ -1363,6 +1409,32 @@ const TripsPage = () => {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2">
+                  {startDate && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      Start Date: {new Date(startDate).toLocaleDateString()}
+                      <button
+                        type="button"
+                        onClick={() => handleDateFilterChange(null, endDate || null)}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear start date filter"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {endDate && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                      End Date: {new Date(endDate).toLocaleDateString()}
+                      <button
+                        type="button"
+                        onClick={() => handleDateFilterChange(startDate || null, null)}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-200"
+                        title="Clear end date filter"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                   {searchValues.vehicleNumber.trim() && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
                       Vehicle: &quot;{searchValues.vehicleNumber}&quot;
@@ -1439,6 +1511,9 @@ const TripsPage = () => {
                   // Clear both immediate and debounced search values
                   setSearchValues({ vehicleNumber: '', tripNumber: '', startPoint: '', endPoint: '', distance: '' });
                   setDebouncedSearchValues({ vehicleNumber: '', tripNumber: '', startPoint: '', endPoint: '', distance: '' });
+                  
+                  // Clear date filters
+                  handleDateFilterChange(null, null);
                   
                   // Immediately trigger search with cleared values
                   setIsSearching(true);
