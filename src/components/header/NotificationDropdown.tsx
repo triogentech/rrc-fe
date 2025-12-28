@@ -128,16 +128,27 @@ export default function NotificationDropdown() {
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {getReminderTypeLabel(reminder.reminderType)}
                           </span>
-                          <span>expires in</span>
-                          <span className="font-medium text-red-600 dark:text-red-400">
-                            {reminder.daysRemaining} day{reminder.daysRemaining !== 1 ? 's' : ''}
-                          </span>
+                          {reminder.daysRemaining < 0 ? (
+                            <>
+                              <span className="font-medium text-red-600 dark:text-red-400">expired</span>
+                              <span className="font-medium text-red-600 dark:text-red-400">
+                                {Math.abs(reminder.daysRemaining)} day{Math.abs(reminder.daysRemaining) !== 1 ? 's' : ''} ago
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span>expires in</span>
+                              <span className="font-medium text-red-600 dark:text-red-400">
+                                {reminder.daysRemaining} day{reminder.daysRemaining !== 1 ? 's' : ''}
+                              </span>
+                            </>
+                          )}
                         </span>
 
                         <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
                           <span>Vehicle</span>
                           <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                          <span>Expires: {formatDateToIST(reminder.expiryDate)}</span>
+                          <span>{reminder.daysRemaining < 0 ? 'Expired' : 'Expires'}: {formatDateToIST(reminder.expiryDate)}</span>
                         </span>
                       </span>
                     </DropdownItem>

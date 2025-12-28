@@ -40,65 +40,42 @@ export class VehicleReminderProvider implements NotificationProvider {
 
       const notifications: VehicleReminderNotification[] = [];
       const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset to start of day
       const oneWeekFromNow = new Date(today);
       oneWeekFromNow.setDate(today.getDate() + 7);
 
       vehicles.forEach((vehicle) => {
-        // Check insuranceDate
-        if (vehicle.insuranceDate) {
-          const insuranceDate = new Date(vehicle.insuranceDate);
-          if (!isNaN(insuranceDate.getTime()) && insuranceDate <= oneWeekFromNow && insuranceDate >= today) {
-            const daysRemaining = Math.ceil((insuranceDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            notifications.push(this.createReminderNotification(
-              vehicle,
-              'insurance',
-              vehicle.insuranceDate,
-              daysRemaining
-            ));
-          }
-        }
+        // Helper function to check and add notification
+        const checkField = (
+          date: string | undefined,
+          reminderType: 'insurance' | 'permit' | 'pucc' | 'np'
+        ) => {
+          if (!date) return;
 
-        // Check permitDate
-        if (vehicle.permitDate) {
-          const permitDate = new Date(vehicle.permitDate);
-          if (!isNaN(permitDate.getTime()) && permitDate <= oneWeekFromNow && permitDate >= today) {
-            const daysRemaining = Math.ceil((permitDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            notifications.push(this.createReminderNotification(
-              vehicle,
-              'permit',
-              vehicle.permitDate,
-              daysRemaining
-            ));
-          }
-        }
+          const fieldDate = new Date(date);
+          fieldDate.setHours(0, 0, 0, 0);
+          if (isNaN(fieldDate.getTime())) return;
 
-        // Check puccDate
-        if (vehicle.puccDate) {
-          const puccDate = new Date(vehicle.puccDate);
-          if (!isNaN(puccDate.getTime()) && puccDate <= oneWeekFromNow && puccDate >= today) {
-            const daysRemaining = Math.ceil((puccDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            notifications.push(this.createReminderNotification(
-              vehicle,
-              'pucc',
-              vehicle.puccDate,
-              daysRemaining
-            ));
-          }
-        }
+          const daysRemaining = Math.ceil((fieldDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const isExpired = daysRemaining < 0;
 
-        // Check npValidUpto
-        if (vehicle.npValidUpto) {
-          const npValidUpto = new Date(vehicle.npValidUpto);
-          if (!isNaN(npValidUpto.getTime()) && npValidUpto <= oneWeekFromNow && npValidUpto >= today) {
-            const daysRemaining = Math.ceil((npValidUpto.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          // Include if expired or expiring within 7 days
+          if (isExpired || (daysRemaining >= 0 && daysRemaining <= 7)) {
             notifications.push(this.createReminderNotification(
               vehicle,
-              'np',
-              vehicle.npValidUpto,
-              daysRemaining
+              reminderType,
+              date,
+              daysRemaining,
+              isExpired
             ));
           }
-        }
+        };
+
+        // Check all fields
+        checkField(vehicle.insuranceDate, 'insurance');
+        checkField(vehicle.permitDate, 'permit');
+        checkField(vehicle.puccDate, 'pucc');
+        checkField(vehicle.npValidUpto, 'np');
       });
 
       // Sort by days remaining (ascending - most urgent first)
@@ -126,7 +103,8 @@ export class VehicleReminderProvider implements NotificationProvider {
     vehicle: VehicleData,
     reminderType: 'insurance' | 'permit' | 'pucc' | 'np',
     expiryDate: string,
-    daysRemaining: number
+    daysRemaining: number,
+    isExpired: boolean = false
   ): VehicleReminderNotification {
     const reminderTypeLabels = {
       insurance: 'Insurance',
@@ -135,13 +113,20 @@ export class VehicleReminderProvider implements NotificationProvider {
       np: 'NP Valid',
     };
 
-    const priority = daysRemaining <= 1 ? 'urgent' : daysRemaining <= 3 ? 'high' : daysRemaining <= 5 ? 'medium' : 'low';
+    // Expired fields are always urgent
+    const priority = isExpired ? 'urgent' : (daysRemaining <= 1 ? 'urgent' : daysRemaining <= 3 ? 'high' : daysRemaining <= 5 ? 'medium' : 'low');
+
+    const daysText = isExpired 
+      ? `expired ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} ago`
+      : `expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`;
 
     return {
       id: `${vehicle.vehicleNumber}-${reminderType}-${expiryDate}`,
       type: 'vehicle-reminder',
-      title: `${reminderTypeLabels[reminderType]} Expiring Soon`,
-      message: `${vehicle.vehicleNumber} - ${vehicle.model} ${reminderTypeLabels[reminderType]} expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`,
+      title: isExpired 
+        ? `${reminderTypeLabels[reminderType]} Expired`
+        : `${reminderTypeLabels[reminderType]} Expiring Soon`,
+      message: `${vehicle.vehicleNumber} - ${vehicle.model} ${reminderTypeLabels[reminderType]} ${daysText}`,
       timestamp: new Date(),
       priority,
       read: false,
