@@ -25,6 +25,14 @@ export default function DateFilter({
   const startDateId = `${idPrefix}-startDate`;
   const endDateId = `${idPrefix}-endDate`;
 
+  // Helper function to format date in local timezone (YYYY-MM-DD)
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Handle date filter change
   const handleDateFilterChange = (type: 'start' | 'end', value: string) => {
     if (type === 'start') {
@@ -149,7 +157,7 @@ export default function DateFilter({
                   startDatePickerRef.current = instance;
                   if (selectedDates && selectedDates.length > 0) {
                     const date = selectedDates[0];
-                    const dateString = date.toISOString().split('T')[0];
+                    const dateString = formatDateLocal(date);
                     handleDateFilterChange('start', dateString);
                   } else if (selectedDates.length === 0) {
                     handleClearDateFilter('start');
@@ -183,7 +191,7 @@ export default function DateFilter({
                   endDatePickerRef.current = instance;
                   if (selectedDates && selectedDates.length > 0) {
                     const date = selectedDates[0];
-                    const dateString = date.toISOString().split('T')[0];
+                    const dateString = formatDateLocal(date);
                     handleDateFilterChange('end', dateString);
                   } else if (selectedDates.length === 0) {
                     handleClearDateFilter('end');
