@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useVehicleCreateModal } from '@/hooks/useVehicleCreateModal';
 import VehicleCreateModal from '@/components/modals/VehicleCreateModal';
@@ -8,8 +9,10 @@ import VehicleEditModal from '@/components/modals/VehicleEditModal';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import { formatDateToIST } from '@/utils/dateFormatter';
 import type { Vehicle } from '@/store/api/types';
-import { getExpiringFields, getReminderTypeColor } from '@/utils/vehicleExpiringFields';
+import { getExpiringFields } from '@/utils/vehicleExpiringFields';
 import { api } from '@/store/api/baseApi';
+import FilterSidebar, { type FilterField } from '@/components/ui/sidebar/FilterSidebar';
+import { VehicleCurrentStatus } from '@/store/api/types';
 
 export default function VehiclesPage() {
   const {
@@ -26,6 +29,8 @@ export default function VehiclesPage() {
     clearVehiclesError,
   } = useVehicles();
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { isOpen, openModal, closeModal, handleSuccess } = useVehicleCreateModal();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -34,12 +39,48 @@ export default function VehiclesPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [allVehiclesForExpiringCheck, setAllVehiclesForExpiringCheck] = useState<Vehicle[]>([]);
-  const [showExpiringFieldsSection, setShowExpiringFieldsSection] = useState(true);
+  const [showExpiringFieldsSection, setShowExpiringFieldsSection] = useState(false);
+  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
 
-  // Fetch vehicles on component mount
+  // Read search query and filters from URL on mount
   useEffect(() => {
-    getVehicles({ page: 1, limit: 25 });
-  }, [getVehicles]);
+    const searchParam = searchParams.get('search');
+    const statusParam = searchParams.get('status');
+    const activeParam = searchParams.get('active');
+    
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+    
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+    
+    if (activeParam !== null) {
+      setActiveFilter(activeParam === 'true');
+    }
+    
+    const params: { page: number; limit?: number; search?: string; currentStatus?: string; active?: boolean } = {
+      page: 1,
+      limit: 100,
+    };
+    
+    if (searchParam) {
+      params.search = searchParam;
+    }
+    
+    if (statusParam) {
+      params.currentStatus = statusParam;
+    }
+    
+    if (activeParam !== null) {
+      params.active = activeParam === 'true';
+    }
+    
+    getVehicles(params);
+  }, [searchParams, getVehicles]);
 
   // Helper function to fetch all vehicles for expiring fields check
   const fetchAllVehiclesForExpiringCheck = async () => {
@@ -83,26 +124,172 @@ export default function VehiclesPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      getVehicles({ search: searchQuery.trim(), page: 1, limit: 25 });
+      // Update URL with search parameter
+      router.push(`/vehicles?search=${encodeURIComponent(searchQuery.trim())}`);
+      getVehicles({ search: searchQuery.trim(), page: 1, limit: 100 });
     } else {
-      getVehicles({ page: 1, limit: 25 });
+      // Clear search parameter from URL
+      router.push('/vehicles');
+      getVehicles({ page: 1, limit: 100 });
     }
   };
 
   // Handle clear search
   const handleClearSearch = () => {
     setSearchQuery('');
-    getVehicles({ page: 1, limit: 25 });
+    // Clear search parameter from URL
+    router.push('/vehicles');
+    getVehicles({ page: 1, limit: 100 });
   };
 
   // Handle click on expiring vehicle number to search
   const handleExpiringVehicleClick = (vehicleNumber: string) => {
     setSearchQuery(vehicleNumber);
-    getVehicles({ search: vehicleNumber, page: 1, limit: 25 });
+    getVehicles({ search: vehicleNumber, page: 1, limit: 100 });
   };
+
+  // Handle apply filters
+  const handleApplyFilters = () => {
+    const params: { page: number; limit?: number; search?: string; currentStatus?: string; active?: boolean } = {
+      page: 1,
+      limit: 100,
+    };
+    
+    // Build URL with filters
+    const urlParams = new URLSearchParams();
+    
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
+      urlParams.set('search', searchQuery.trim());
+    }
+    
+    if (statusFilter) {
+      params.currentStatus = statusFilter;
+      urlParams.set('status', statusFilter);
+    }
+    
+    if (activeFilter !== null) {
+      params.active = activeFilter;
+      urlParams.set('active', activeFilter.toString());
+    }
+    
+    // Update URL
+    const url = urlParams.toString() ? `/vehicles?${urlParams.toString()}` : '/vehicles';
+    router.push(url);
+    
+    getVehicles(params);
+    setIsFilterSidebarOpen(false);
+  };
+
+  // Handle clear filters
+  const handleClearFilters = () => {
+    setStatusFilter(null);
+    setActiveFilter(null);
+    const params: { page: number; limit?: number; search?: string } = {
+      page: 1,
+      limit: 100,
+    };
+    
+    // Build URL without filter params
+    const urlParams = new URLSearchParams();
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
+      urlParams.set('search', searchQuery.trim());
+    }
+    
+    // Update URL
+    const url = urlParams.toString() ? `/vehicles?${urlParams.toString()}` : '/vehicles';
+    router.push(url);
+    
+    getVehicles(params);
+  };
+
+  // Create filter fields configuration for vehicles
+  const vehicleFilterFields: FilterField[] = [
+    {
+      id: 'status',
+      label: 'Status',
+      type: 'select',
+      value: statusFilter,
+      onChange: (value) => setStatusFilter(value as string | null),
+      options: [
+        { value: null, label: 'All' },
+        { value: VehicleCurrentStatus.IDLE, label: 'Idle' },
+        { value: VehicleCurrentStatus.ASSIGNED, label: 'Assigned' },
+        { value: VehicleCurrentStatus.ONGOING, label: 'Ongoing' },
+        { value: VehicleCurrentStatus.IN_TRANSIT, label: 'In Transit' },
+      ],
+    },
+    {
+      id: 'active',
+      label: 'Active Status',
+      type: 'select',
+      value: activeFilter,
+      onChange: (value) => setActiveFilter(value as boolean | null),
+      options: [
+        { value: null, label: 'All' },
+        { value: true, label: 'Active' },
+        { value: false, label: 'Inactive' },
+      ],
+    },
+  ];
 
   // Get vehicles with expiring fields from all vehicles (not just current page)
   const vehiclesWithExpiringFields = allVehiclesForExpiringCheck.filter(vehicle => getExpiringFields(vehicle).length > 0);
+
+  // Calculate statistics for expiring fields
+  const expiringStats = React.useMemo(() => {
+    const stats = {
+      expired: 0,
+      urgent: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      totalVehicles: vehiclesWithExpiringFields.length,
+    };
+
+    vehiclesWithExpiringFields.forEach(vehicle => {
+      const fields = getExpiringFields(vehicle);
+      fields.forEach(field => {
+        if (field.isExpired) {
+          stats.expired++;
+        } else {
+          switch (field.priority) {
+            case 'urgent':
+              stats.urgent++;
+              break;
+            case 'high':
+              stats.high++;
+              break;
+            case 'medium':
+              stats.medium++;
+              break;
+            case 'low':
+              stats.low++;
+              break;
+          }
+        }
+      });
+    });
+
+    return stats;
+  }, [vehiclesWithExpiringFields]);
+
+  // Get most critical vehicles (expired first, then urgent, limited to top 5)
+  const mostCriticalVehicles = React.useMemo(() => {
+    return [...vehiclesWithExpiringFields]
+      .sort((a, b) => {
+        const aFields = getExpiringFields(a);
+        const bFields = getExpiringFields(b);
+        const aMostUrgent = aFields[0];
+        const bMostUrgent = bFields[0];
+        
+        if (aMostUrgent.isExpired && !bMostUrgent.isExpired) return -1;
+        if (!aMostUrgent.isExpired && bMostUrgent.isExpired) return 1;
+        return aMostUrgent.daysRemaining - bMostUrgent.daysRemaining;
+      })
+      .slice(0, 5);
+  }, [vehiclesWithExpiringFields]);
 
   // Handle vehicle creation success
   const handleVehicleCreated = (vehicle: Vehicle) => {
@@ -111,7 +298,7 @@ export default function VehiclesPage() {
     const currentPage = pagination?.page || 1;
     const params: { page: number; limit?: number; search?: string } = {
       page: currentPage,
-      limit: pagination?.pageSize || 25,
+      limit: pagination?.pageSize || 100,
     };
     if (searchQuery.trim()) {
       params.search = searchQuery.trim();
@@ -153,7 +340,7 @@ export default function VehiclesPage() {
     const currentPage = pagination?.page || 1;
     const params: { page: number; limit?: number; search?: string } = {
       page: currentPage,
-      limit: pagination?.pageSize || 25,
+      limit: pagination?.pageSize || 100,
     };
     if (searchQuery.trim()) {
       params.search = searchQuery.trim();
@@ -190,7 +377,7 @@ export default function VehiclesPage() {
         const currentPage = pagination?.page || 1;
         const params: { page: number; limit?: number; search?: string } = {
           page: currentPage,
-          limit: pagination?.pageSize || 25,
+          limit: pagination?.pageSize || 100,
         };
         if (searchQuery.trim()) {
           params.search = searchQuery.trim();
@@ -213,91 +400,177 @@ export default function VehiclesPage() {
       {/* Header Section */}
       <div className="col-span-12">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Vehicles Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage and view all your vehicles in one place</p>
-        </div>
-
-        {/* Show Expiring Fields Button (when hidden) */}
-        {vehiclesWithExpiringFields.length > 0 && !showExpiringFieldsSection && (
-          <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Vehicles Management</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Manage and view all your vehicles in one place</p>
+            </div>
             <button
-              onClick={() => setShowExpiringFieldsSection(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 transition-colors"
-              title="Show vehicles with expiring/expired due dates"
+              onClick={() => setIsFilterSidebarOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              title="Filter vehicles"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
-              <span>Show Vehicles with Expiring/Expired Due Dates ({vehiclesWithExpiringFields.length})</span>
+              <span>Filter</span>
             </button>
           </div>
-        )}
+        </div>
 
-        {/* Expiring/Expired Fields Section */}
-        {vehiclesWithExpiringFields.length > 0 && showExpiringFieldsSection && (
-          <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                  Vehicles with Expiring/Expired Due Dates ({vehiclesWithExpiringFields.length})
-                </h3>
+        {/* Expiring/Expired Fields Alert Section */}
+        {vehiclesWithExpiringFields.length > 0 && (
+          <div className="mb-4">
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+              <div className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Document Expiry Alerts
+                      </h3>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {expiringStats.totalVehicles} vehicle{expiringStats.totalVehicles !== 1 ? 's' : ''} require attention
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => router.push('/vehicles/expiring')}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 rounded-lg transition-colors"
+                    >
+                      View All
+                    </button>
+                    {showExpiringFieldsSection && (
+                      <button
+                        onClick={() => setShowExpiringFieldsSection(false)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        title="Collapse"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                    )}
+                    {!showExpiringFieldsSection && (
+                      <button
+                        onClick={() => setShowExpiringFieldsSection(true)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        title="Expand"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Statistics Cards - Compact */}
+                {showExpiringFieldsSection && (
+                  <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {expiringStats.expired > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-100 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-800">
+                          <span className="text-xs font-medium text-red-700 dark:text-red-300">Expired:</span>
+                          <span className="text-sm font-bold text-red-900 dark:text-red-100">{expiringStats.expired}</span>
+                        </div>
+                      )}
+                      {expiringStats.urgent > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-100 dark:bg-orange-900/30 rounded border border-orange-200 dark:border-orange-800">
+                          <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Urgent:</span>
+                          <span className="text-sm font-bold text-orange-900 dark:text-orange-100">{expiringStats.urgent}</span>
+                        </div>
+                      )}
+                      {expiringStats.high > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-200 dark:border-amber-800">
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">High:</span>
+                          <span className="text-sm font-bold text-amber-900 dark:text-amber-100">{expiringStats.high}</span>
+                        </div>
+                      )}
+                      {expiringStats.medium > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
+                          <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Medium:</span>
+                          <span className="text-sm font-bold text-yellow-900 dark:text-yellow-100">{expiringStats.medium}</span>
+                        </div>
+                      )}
+                      {expiringStats.low > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
+                          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Low:</span>
+                          <span className="text-sm font-bold text-blue-900 dark:text-blue-100">{expiringStats.low}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Most Critical Vehicles List - In Row */}
+                    {mostCriticalVehicles.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
+                            Top {Math.min(3, mostCriticalVehicles.length)} Critical
+                          </h4>
+                          {vehiclesWithExpiringFields.length > 3 && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {vehiclesWithExpiringFields.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {mostCriticalVehicles.slice(0, 3).map((vehicle) => {
+                            const expiringFields = getExpiringFields(vehicle);
+                            const mostUrgent = expiringFields[0];
+                            const hasExpired = expiringFields.some(f => f.isExpired);
+                            const expiredCount = expiringFields.filter(f => f.isExpired).length;
+                            const expiredFields = expiringFields.filter(f => f.isExpired);
+                            
+                            return (
+                              <button
+                                key={vehicle.documentId}
+                                onClick={() => handleExpiringVehicleClick(vehicle.vehicleNumber)}
+                                className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-sm transition-all group"
+                              >
+                                <div className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${
+                                  mostUrgent.isExpired
+                                    ? 'bg-red-600'
+                                    : mostUrgent.priority === 'urgent'
+                                    ? 'bg-red-500'
+                                    : mostUrgent.priority === 'high'
+                                    ? 'bg-orange-500'
+                                    : mostUrgent.priority === 'medium'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-blue-500'
+                                }`}></div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                    {getVehicleDisplayName(vehicle)}
+                                  </div>
+                                  {hasExpired && expiredFields.length > 0 && (
+                                    <div className="text-xs text-red-600 dark:text-red-400 truncate">
+                                      {expiredFields.map(f => f.label).join(', ')} expired
+                                    </div>
+                                  )}
+                                </div>
+                                {hasExpired && (
+                                  <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-semibold rounded flex-shrink-0">
+                                    {expiredCount}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => setShowExpiringFieldsSection(false)}
-                className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200 transition-colors"
-                title="Close this section"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {vehiclesWithExpiringFields.map((vehicle) => {
-                const expiringFields = getExpiringFields(vehicle);
-                const mostUrgent = expiringFields[0]; // Already sorted by urgency (expired first)
-                const hasExpired = expiringFields.some(f => f.isExpired);
-                const expiredCount = expiringFields.filter(f => f.isExpired).length;
-                
-                return (
-                  <button
-                    key={vehicle.documentId}
-                    onClick={() => handleExpiringVehicleClick(vehicle.vehicleNumber)}
-                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80 ${
-                      mostUrgent.isExpired
-                        ? 'bg-red-600 text-white dark:bg-red-700 dark:text-white' 
-                        : mostUrgent.priority === 'urgent' 
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
-                        : mostUrgent.priority === 'high'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        : mostUrgent.priority === 'medium'
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                    }`}
-                    title={`${vehicle.vehicleNumber} - ${expiringFields.map(f => 
-                      f.isExpired 
-                        ? `${f.label} (Expired ${Math.abs(f.daysRemaining)}d ago)` 
-                        : `${f.label} (${f.daysRemaining}d remaining)`
-                    ).join(', ')}`}
-                  >
-                    <span className={`w-2 h-2 rounded-full mr-1.5 ${getReminderTypeColor(mostUrgent.type)}`}></span>
-                    {vehicle.vehicleNumber}
-                    {hasExpired && (
-                      <span className="ml-1.5 px-1.5 py-0.5 bg-red-700/30 dark:bg-red-800/50 rounded text-xs font-bold">
-                        {expiredCount} expired
-                      </span>
-                    )}
-                    {expiringFields.length > 1 && (
-                      <span className="ml-1.5 px-1.5 py-0.5 bg-white/50 dark:bg-gray-800/50 rounded text-xs">
-                        +{expiringFields.length - 1}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
             </div>
           </div>
         )}
@@ -460,14 +733,14 @@ export default function VehiclesPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Active
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th scope="col" className="sticky right-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-700 z-10 border-l border-gray-200 dark:border-gray-600">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                      {vehicles.map((vehicle: Vehicle) => (
-                       <tr key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                       <tr key={vehicle.id} className="group hover:bg-gray-50 dark:hover:bg-gray-700">
                          <td className="px-6 py-4 whitespace-nowrap">
                            <div className="flex items-center">
                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
@@ -541,7 +814,7 @@ export default function VehiclesPage() {
                             {vehicle.isActive === true ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="sticky right-0 px-6 py-4 whitespace-nowrap bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700 z-10 border-l border-gray-200 dark:border-gray-600 transition-colors">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleViewVehicle(vehicle)}
@@ -662,6 +935,16 @@ export default function VehiclesPage() {
         cancelText="Cancel"
         isLoading={isDeleting}
         type="danger"
+      />
+
+      {/* Filter Sidebar */}
+      <FilterSidebar
+        isOpen={isFilterSidebarOpen}
+        onClose={() => setIsFilterSidebarOpen(false)}
+        title="Filter Vehicles"
+        fields={vehicleFilterFields}
+        onApplyFilters={handleApplyFilters}
+        onClearFilters={handleClearFilters}
       />
     </div>
   );

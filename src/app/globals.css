@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Flatpickr calendar z-index fix for filter sidebar */
+.flatpickr-calendar {
+  z-index: 100002 !important;
+}
+
 /* Toast notifications z-index fix and dark blue theme */
 .Toastify__toast-container {
   z-index: 9999 !important;

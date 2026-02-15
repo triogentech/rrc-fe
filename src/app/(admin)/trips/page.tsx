@@ -17,6 +17,7 @@ import { getUserDisplayName, getUserEmail } from '@/utils/userDisplay';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toastHelper';
 import { formatDateTimeToIST } from '@/utils/dateFormatter';
 import DateFilter from '@/components/common/DateFilter';
+import FilterSidebar, { type FilterField } from '@/components/ui/sidebar/FilterSidebar';
 
 const TripsPage = () => {
   const searchParams = useSearchParams();
@@ -47,6 +48,9 @@ const TripsPage = () => {
   // Date filter state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
+  // Filter sidebar state
+  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   
   // Search state
   const [activeSearchColumn, setActiveSearchColumn] = useState<string | null>(null);
@@ -301,29 +305,54 @@ const TripsPage = () => {
     setActiveSearchColumn(null);
   };
 
-  // Handle date filter change from DateFilter component
+  // Handle date filter change from DateFilter component (only update state, don't trigger search)
   const handleDateFilterChange = (newStartDate: string | null, newEndDate: string | null) => {
     setStartDate(newStartDate || '');
     setEndDate(newEndDate || '');
-    
-    // Trigger search immediately when date changes
+    // Don't trigger search immediately - wait for "Apply Filters" button
+  };
+
+  // Handle apply filters
+  const handleApplyFilters = () => {
     setIsSearching(true);
     const params = buildSearchParams(1, false, 25);
-    if (newStartDate) {
-      params.startDate = newStartDate;
-    } else {
-      delete params.startDate;
-    }
-    if (newEndDate) {
-      params.endDate = newEndDate;
-    } else {
-      delete params.endDate;
-    }
-    
+    getTrips(params).finally(() => {
+      setIsSearching(false);
+    });
+    setIsFilterSidebarOpen(false);
+  };
+
+  // Handle clear filters
+  const handleClearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setIsSearching(true);
+    const params = buildSearchParams(1, false, 25);
+    delete params.startDate;
+    delete params.endDate;
     getTrips(params).finally(() => {
       setIsSearching(false);
     });
   };
+
+  // Create filter fields configuration for trips
+  const tripFilterFields: FilterField[] = [
+    {
+      id: 'dateRange',
+      label: 'Date Range',
+      type: 'custom',
+      customRender: () => (
+        <DateFilter
+          onDateChange={handleDateFilterChange}
+          disabled={isSearching}
+          className="p-0 bg-transparent border-0 dark:bg-transparent"
+          idPrefix="tripFilter"
+          startDate={startDate}
+          endDate={endDate}
+        />
+      ),
+    },
+  ];
 
   // Filter trips based on status filter
   const filteredTrips = statusFilter 
@@ -1008,6 +1037,12 @@ const TripsPage = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
+                    Touching
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
                     Start Time
                     <FaSearch className="w-3.5 h-3.5 text-gray-400" />
                   </div>
@@ -1151,55 +1186,74 @@ const TripsPage = () => {
                       {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
                     </div>
                   </td>
-                  {/* 6. Start Time */}
+                  {/* 6. Touching */}
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.touchingLocations && trip.touchingLocations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {trip.touchingLocations.map((location, index) => (
+                            <span
+                              key={location.id || index}
+                              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            >
+                              {location.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">Not Mentioned</span>
+                      )}
+                    </div>
+                  </td>
+                  {/* 7. Start Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {formatDateTimeToIST(trip.estimatedStartTime)}
                     </div>
                   </td>
-                  {/* 7. End Time */}
+                  {/* 8. End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {formatDateTimeToIST(trip.estimatedEndTime)}
                     </div>
                   </td>
-                  {/* 8. Freight Amount */}
+                  {/* 9. Freight Amount */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {`₹${(trip.freightTotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </div>
                   </td>
-                  {/* 9. Advance Amount */}
+                  {/* 10. Advance Amount */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {`₹${(trip.advanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </div>
                   </td>
-                  {/* 10. Balance Amount */}
+                  {/* 11. Balance Amount */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getBalanceAmount(trip)}
                     </div>
                   </td>
-                  {/* 11. Est. TAT in Hours */}
+                  {/* 12. Est. TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getEstimatedTAT(trip)}
                     </div>
                   </td>
-                  {/* 12. Actual End Time */}
+                  {/* 13. Actual End Time */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {formatDateTimeToIST(trip.actualEndTime)}
                     </div>
                   </td>
-                  {/* 13. Running TAT in Hours */}
+                  {/* 14. Running TAT in Hours */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {getRunningTAT(trip)}
                     </div>
                   </td>
-                  {/* 14. Status */}
+                  {/* 15. Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={trip.currentStatus}
@@ -1372,10 +1426,22 @@ const TripsPage = () => {
       {/* Header Section */}
       <div className="col-span-12">
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{getPageTitle()}</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{getPageTitle()}</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">{getPageDescription()}</p>
             </div>
-          <p className="text-gray-600 dark:text-gray-400">{getPageDescription()}</p>
+            <button
+              onClick={() => setIsFilterSidebarOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              title="Filter trips"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span>Filter</span>
+            </button>
+          </div>
         </div>
 
         {/* Add Button */}
@@ -1388,13 +1454,6 @@ const TripsPage = () => {
           </button>
         </div>
 
-        {/* Date Filters */}
-        <div className="mb-6">
-          <DateFilter
-            onDateChange={handleDateFilterChange}
-            disabled={isSearching}
-          />
-        </div>
 
         {/* Active Search Filters */}
         {(searchValues.vehicleNumber.trim() || searchValues.tripNumber.trim() || searchValues.startPoint.trim() || searchValues.endPoint.trim() || searchValues.distance.trim() || startDate || endDate) && (
@@ -1599,6 +1658,16 @@ const TripsPage = () => {
         onConfirm={handleConfirmActualEndTime}
         trip={selectedTrip}
         isLoading={isSettingActualEndTime}
+      />
+
+      {/* Filter Sidebar */}
+      <FilterSidebar
+        isOpen={isFilterSidebarOpen}
+        onClose={() => setIsFilterSidebarOpen(false)}
+        title="Filter Trips"
+        fields={tripFilterFields}
+        onApplyFilters={handleApplyFilters}
+        onClearFilters={handleClearFilters}
       />
     </div>
   );

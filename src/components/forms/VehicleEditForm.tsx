@@ -1,12 +1,12 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Vehicle, VehicleUpdateRequest } from '@/store/api/types';
-import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
+import { VehicleType } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
-import flatpickr from 'flatpickr';
-import 'flatpickr/dist/flatpickr.css';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { CalenderIcon } from '@/icons';
 
 interface VehicleEditFormProps {
@@ -44,7 +44,6 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
   });
 
   const [errors, setErrors] = useState<Partial<VehicleUpdateRequest>>({});
-  const pickersRef = useRef<flatpickr.Instance[]>([]);
 
   // Handle input changes with useCallback to prevent unnecessary re-renders
   const handleInputChange = useCallback((field: keyof VehicleUpdateRequest, value: string | boolean) => {
@@ -59,6 +58,22 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
       [field]: undefined
     }));
   }, []);
+
+  // Helper function to parse date from string
+  const parseDate = (dateString: string): Date | null => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  // Helper function to format date for form data
+  const formatDateForStorage = (date: Date | null): string => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Update form data when vehicle prop changes
   useEffect(() => {
@@ -85,51 +100,7 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
       cstmCreatedBy: typeof vehicle.cstmCreatedBy === 'string' ? vehicle.cstmCreatedBy : vehicle.cstmCreatedBy?.documentId || '',
       cstmUpdatedBy: user?.documentId || user?.id || '',
     });
-
-    // Update flatpickr instances with new dates
-    const dateFields = ['registrationDate', 'fitnessDate', 'insuranceDate', 'taxDueDate', 'permitDate', 'puccDate', 'npValidUpto'];
-    dateFields.forEach((field, index) => {
-      const picker = pickersRef.current[index];
-      const dateValue = vehicle[field as keyof Vehicle] as string;
-      if (picker && dateValue) {
-        picker.setDate(dateValue, false);
-      }
-    });
   }, [vehicle, user]);
-
-  // Initialize flatpickr for date fields
-  useEffect(() => {
-    const dateFields = [
-      'registrationDate',
-      'fitnessDate',
-      'insuranceDate',
-      'taxDueDate',
-      'permitDate',
-      'puccDate',
-      'npValidUpto'
-    ];
-
-    pickersRef.current = dateFields.map((field) => {
-      const picker = flatpickr(`#${field}`, {
-        dateFormat: "Y-m-d",
-        defaultDate: vehicle[field as keyof Vehicle] as string || undefined,
-        onChange: (selectedDates, dateStr) => {
-          handleInputChange(field as keyof VehicleUpdateRequest, dateStr);
-        },
-      });
-      // flatpickr can return Instance or Instance[], but with ID selector it should be single
-      return Array.isArray(picker) ? picker[0] : picker;
-    });
-
-    return () => {
-      pickersRef.current.forEach((picker) => {
-        if (picker && !Array.isArray(picker)) {
-          picker.destroy();
-        }
-      });
-      pickersRef.current = [];
-    };
-  }, [handleInputChange, vehicle]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<VehicleUpdateRequest> = {};
@@ -275,25 +246,6 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
           </select>
         </div>
 
-        {/* Current Status */}
-        <div>
-          <label htmlFor="currentStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Current Status
-          </label>
-          <select
-            id="currentStatus"
-            value={formData.currentStatus || VehicleCurrentStatus.CHOOSE_HERE}
-            onChange={(e) => handleInputChange('currentStatus', e.target.value as VehicleCurrentStatus)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            disabled={isLoading}
-          >
-            <option value={VehicleCurrentStatus.CHOOSE_HERE}>Choose here</option>
-            <option value={VehicleCurrentStatus.IDLE}>Idle</option>
-            <option value={VehicleCurrentStatus.ASSIGNED}>Assigned</option>
-            <option value={VehicleCurrentStatus.ONGOING}>Ongoing</option>
-          </select>
-        </div>
-
         {/* Active Status */}
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -417,16 +369,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             Registration Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="registrationDate"
-              value={formData.registrationDate || ''}
-              readOnly
-              placeholder="Select registration date"
+            <DatePicker
+              selected={parseDate(formData.registrationDate || '')}
+              onChange={(date) => handleInputChange('registrationDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select registration date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.registrationDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -443,16 +400,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             Fitness Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="fitnessDate"
-              value={formData.fitnessDate || ''}
-              readOnly
-              placeholder="Select fitness date"
+            <DatePicker
+              selected={parseDate(formData.fitnessDate || '')}
+              onChange={(date) => handleInputChange('fitnessDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select fitness date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.fitnessDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -469,16 +431,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             Insurance Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="insuranceDate"
-              value={formData.insuranceDate || ''}
-              readOnly
-              placeholder="Select insurance date"
+            <DatePicker
+              selected={parseDate(formData.insuranceDate || '')}
+              onChange={(date) => handleInputChange('insuranceDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select insurance date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.insuranceDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -495,16 +462,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             Tax Due Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="taxDueDate"
-              value={formData.taxDueDate || ''}
-              readOnly
-              placeholder="Select tax due date"
+            <DatePicker
+              selected={parseDate(formData.taxDueDate || '')}
+              onChange={(date) => handleInputChange('taxDueDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select tax due date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.taxDueDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -521,16 +493,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             Permit Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="permitDate"
-              value={formData.permitDate || ''}
-              readOnly
-              placeholder="Select permit date"
+            <DatePicker
+              selected={parseDate(formData.permitDate || '')}
+              onChange={(date) => handleInputChange('permitDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select permit date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.permitDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -547,16 +524,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             PUCC Date <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="puccDate"
-              value={formData.puccDate || ''}
-              readOnly
-              placeholder="Select PUCC date"
+            <DatePicker
+              selected={parseDate(formData.puccDate || '')}
+              onChange={(date) => handleInputChange('puccDate', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select PUCC date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.puccDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />
@@ -573,16 +555,21 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             NP Valid Upto <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <input
-              type="text"
-              id="npValidUpto"
-              value={formData.npValidUpto || ''}
-              readOnly
-              placeholder="Select NP valid upto date"
+            <DatePicker
+              selected={parseDate(formData.npValidUpto || '')}
+              onChange={(date) => handleInputChange('npValidUpto', formatDateForStorage(date))}
+              dateFormat="yyyy-MM-dd"
+              placeholderText="Select NP valid upto date"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
               className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600 cursor-pointer ${
                 errors.npValidUpto ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               disabled={isLoading}
+              wrapperClassName="w-full"
             />
             <span className="absolute text-gray-500 dark:text-gray-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
               <CalenderIcon className="size-5" />

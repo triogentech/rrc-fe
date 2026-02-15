@@ -96,7 +96,7 @@ export default function NotificationDropdown() {
                   <li key={reminder.id}>
                     <DropdownItem
                       tag="a"
-                      href={reminder.actionUrl || '/vehicles'}
+                      href={`${reminder.actionUrl || '/vehicles'}?search=${encodeURIComponent(reminder.vehicleNumber)}`}
                       onItemClick={closeDropdown}
                       className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5 cursor-pointer"
                     >
@@ -124,7 +124,7 @@ export default function NotificationDropdown() {
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {reminder.vehicleNumber}
                           </span>
-                          <span>- {reminder.model}</span>
+                          <span>- {reminder.model || 'Unknown'}</span>
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {getReminderTypeLabel(reminder.reminderType)}
                           </span>

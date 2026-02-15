@@ -6,7 +6,7 @@ import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 interface CityCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdCity?: { documentId: string; name: string }) => void;
 }
 
 interface CityFormData {
@@ -96,7 +96,8 @@ const CityCreateModal: React.FC<CityCreateModalProps> = ({
         cityData.countryISOCode = formData.countryISOCode.trim();
       }
 
-      await cityService.createCity(cityData);
+      const response = await cityService.createCity(cityData);
+      const createdCity = response.data as unknown as { documentId: string; name: string };
       showSuccessToast(`City "${formData.name}" created successfully!`);
       setFormData({
         name: '',
@@ -107,7 +108,10 @@ const CityCreateModal: React.FC<CityCreateModalProps> = ({
         countryISOCode: '',
       });
       setErrors({});
-      onSuccess();
+      onSuccess({
+        documentId: createdCity.documentId || '',
+        name: createdCity.name || formData.name,
+      });
       onClose();
     } catch (error) {
       console.error('Failed to create city:', error);

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { loadProviderService, cityService } from '@/store/api/services';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
+import CityCreateModal from '@/components/modals/CityCreateModal';
 
 interface LoadProviderCreateModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ const LoadProviderCreateModal: React.FC<LoadProviderCreateModalProps> = ({
   const [showAddCity, setShowAddCity] = useState(false);
   const [newCityName, setNewCityName] = useState('');
   const [isAddingCity, setIsAddingCity] = useState(false);
+  const [isCityCreateModalOpen, setIsCityCreateModalOpen] = useState(false);
 
   // Fetch cities when modal opens
   useEffect(() => {
@@ -101,6 +103,18 @@ const LoadProviderCreateModal: React.FC<LoadProviderCreateModalProps> = ({
       showErrorToast('Failed to add city');
     } finally {
       setIsAddingCity(false);
+    }
+  };
+
+  const handleCityCreated = async (createdCity?: { documentId: string; name: string }) => {
+    // Refresh cities list after city is created
+    await fetchCities();
+    setIsCityCreateModalOpen(false);
+    
+    // If a city was created, select it in the dropdown
+    if (createdCity && createdCity.documentId) {
+      setFormData(prev => ({ ...prev, city: createdCity.documentId }));
+      showSuccessToast(`City "${createdCity.name}" added and selected!`);
     }
   };
 
@@ -285,19 +299,32 @@ const LoadProviderCreateModal: React.FC<LoadProviderCreateModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 City
               </label>
-              <select
-                value={formData.city || ''}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                disabled={isSubmitting || isLoadingCities}
-              >
-                <option value="">Select a city</option>
-                {cities.map((city) => (
-                  <option key={city.documentId} value={city.documentId}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={formData.city || ''}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  disabled={isSubmitting || isLoadingCities}
+                >
+                  <option value="">Select a city</option>
+                  {cities.map((city) => (
+                    <option key={city.documentId} value={city.documentId}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsCityCreateModalOpen(true)}
+                  disabled={isSubmitting || isLoadingCities}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Add new city"
+                >
+                  <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
               
               {/* Add City Input */}
               {showAddCity && (
@@ -405,6 +432,13 @@ const LoadProviderCreateModal: React.FC<LoadProviderCreateModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* City Create Modal */}
+      <CityCreateModal
+        isOpen={isCityCreateModalOpen}
+        onClose={() => setIsCityCreateModalOpen(false)}
+        onSuccess={handleCityCreated}
+      />
     </div>
   );
 };
