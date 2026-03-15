@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
-import { FaTruck, FaCity } from "react-icons/fa";
+import { FaTruck, FaCity, FaMapMarkedAlt } from "react-icons/fa";
 import {
   ChevronDownIcon,
   GridIcon,
@@ -53,6 +53,11 @@ const navItems: NavItem[] = [
     icon: <BoxIcon />,
     name: "Vehicles",
     path: "/vehicles",
+  },
+  {
+    icon: <FaMapMarkedAlt />,
+    name: "Track Vehicle",
+    path: "/track-vehicle",
   },
   {
     icon: <DollarLineIcon />,
