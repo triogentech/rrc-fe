@@ -930,6 +930,12 @@ const TripsPage = () => {
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    Touching
+                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                       Trip To
@@ -1033,12 +1039,6 @@ const TripsPage = () => {
                         </button>
                       </div>
                     )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  <div className="flex items-center gap-2">
-                    Touching
-                    <FaSearch className="w-3.5 h-3.5 text-gray-400" />
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -1170,23 +1170,7 @@ const TripsPage = () => {
                       )}
                     </div>
                   </td>
-                  {/* 4. Trip To */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                    {trip.endPoint ? (
-                      <div className="font-medium">{trip.endPoint}</div>
-                      ) : (
-                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                      )}
-                    </div>
-                  </td>
-                  {/* 5. Distance (KM) */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
-                    </div>
-                  </td>
-                  {/* 6. Touching */}
+                  {/* 4. Touching */}
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {trip.touchingLocations && trip.touchingLocations.length > 0 ? (
@@ -1203,6 +1187,22 @@ const TripsPage = () => {
                       ) : (
                         <span className="text-gray-500 dark:text-gray-400">Not Mentioned</span>
                       )}
+                    </div>
+                  </td>
+                  {/* 5. Trip To */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                    {trip.endPoint ? (
+                      <div className="font-medium">{trip.endPoint}</div>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                      )}
+                    </div>
+                  </td>
+                  {/* 6. Distance (KM) */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {trip.totalTripDistanceInKM ? `${trip.totalTripDistanceInKM} km` : 'N/A'}
                     </div>
                   </td>
                   {/* 7. Start Time */}
