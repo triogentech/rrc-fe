@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useVehicles } from '@/store/hooks/useVehicles';
 import { useReduxAuth } from '@/store/hooks/useReduxAuth';
 import type { Vehicle, VehicleUpdateRequest } from '@/store/api/types';
-import { VehicleType } from '@/store/api/types';
+import { VehicleType, VehicleCurrentStatus } from '@/store/api/types';
 import { showSuccessToast, showErrorToast } from '@/utils/toastHelper';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -243,6 +243,24 @@ export default function VehicleEditForm({ vehicle, onSuccess, onCancel }: Vehicl
             <option value={VehicleType.VAN}>Van</option>
             <option value={VehicleType.BUS}>Bus</option>
             <option value={VehicleType.MOTORCYCLE}>Motorcycle</option> */}
+          </select>
+        </div>
+
+        {/* Status */}
+        <div>
+          <label htmlFor="currentStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Status
+          </label>
+          <select
+            id="currentStatus"
+            value={formData.currentStatus || VehicleCurrentStatus.IDLE}
+            onChange={(e) => handleInputChange('currentStatus', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            disabled={isLoading}
+          >
+            <option value={VehicleCurrentStatus.IDLE}>Idle</option>
+            <option value={VehicleCurrentStatus.ASSIGNED}>Assigned</option>
+            <option value={VehicleCurrentStatus.IN_TRANSIT}>In-transit</option>
           </select>
         </div>
 
